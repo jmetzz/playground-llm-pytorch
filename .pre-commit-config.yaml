@@ -1,0 +1,47 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-docstring-first
+      - id: check-shebang-scripts-are-executable
+      - id: debug-statements
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+        exclude: "not_rendered.yml|invalid-config.yaml"
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.1
+    hooks:
+      - id: ruff # Run the linter.
+        types_or: [python, pyi]
+        args: [--fix]
+      - id: ruff-format # Run the formatter.
+        types_or: [python, pyi, jupyter]
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run pytest
+        entry: |
+          sh -c '
+          if ls tests/*.py >/dev/null 2>&1; then
+            poetry run pytest -m "not nondeterministic";
+          else
+            echo "No test files found. Skipping pytest.";
+          fi
+          '
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
+        stages: [push]
+      - id: licenses
+        name: Generate licenses file
+        entry: poetry run pip-licenses --with-authors -f markdown --output-file ./licenses.md
+        language: system
+        # This hook doesn't need to pass any filenames.
+        pass_filenames: false
+        # Assuming you want this to always run when triggered, not just when files are changed.
+        always_run: true
+        # Specify the stages you want this hook to run. For example, let's make it run on commit.
+        stages: [commit]
