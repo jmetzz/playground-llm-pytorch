@@ -34,11 +34,11 @@ deps-notebook:
 
 test: ## Run unit tests
 	@printf "$(CYAN)Running test suite$(COFF)\n"
-	export PYTHONPATH="./src" && poetry run pytest -m "not nondeterministic" --cov=src
+	poetry run pytest -m "not nondeterministic" --cov=src
 
 test-flaky: ## Run non-deterministic unit tests
 	@printf "$(CYAN)Running test suite$(COFF)\n"
-	export PYTHONPATH="./src" && poetry run pytest -m "nondeterministic"
+	poetry run pytest -m "nondeterministic"
 
 check: ## Run static code checkers and linters
 	@printf "$(CYAN)Running static code analysis and license generation$(COFF)\n"
