@@ -6,7 +6,8 @@ from typing import Annotated
 
 import typer
 
-from tokenizers import SimpleRegexTokenizerV1, punctuation_splitter, space_and_punctuation_splitter, space_splitter
+from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
+from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
 from utils import load_text_file
 
 app = typer.Typer()
@@ -41,19 +42,34 @@ def split_text(
 
 
 @app.command()
-def tokenize():
+def tokenize_v1():
     the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
     content = load_text_file(the_verdict_file)
-    words = punctuation_splitter(content, encode_spaces=False)
+    words = space_and_punctuation_splitter(content, encode_spaces=False)
     print(f"number of words: {len(words)}")
 
-    vocabulary = {token: idx for idx, token in enumerate(words)}
-    print(f"vocabulary size: {len(vocabulary)}")
+    # vocabulary = {token: idx for idx, token in enumerate(words)}
+    print(f"vocabulary size: {len(set(words))}")
+    tokenizer = SimpleRegexTokenizerV1(words)
 
-    tokenizer = SimpleRegexTokenizerV1(vocabulary)
+    text = '"It\'s the last he painted, you know," Mrs. Gisburn said with pardonable pride'
+    ids = tokenizer.encode(text)
+    print(ids)
+    print(tokenizer.decode(ids))
 
-    text = """\"It's the last he painted, you know,\"
-       Mrs. Gisburn said with pardonable pride."""
+
+@app.command()
+def tokenize_v2():
+    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
+    content = load_text_file(the_verdict_file)
+    words = space_and_punctuation_splitter(content, encode_spaces=False)
+    print(f"vocabulary size: {len(set(words))}")
+
+    tokenizer = SimpleRegexTokenizerV2(words)
+    text = SimpleRegexTokenizerV2.BLOCK_DELIMITER.join(
+        ("Hello, do you like tea?", "In the sunlit terraces of the palace.")
+    )
+    print(text)
     ids = tokenizer.encode(text)
     print(ids)
     print(tokenizer.decode(ids))

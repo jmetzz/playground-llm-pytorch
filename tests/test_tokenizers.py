@@ -4,30 +4,25 @@ from tokenizers import SimpleRegexTokenizerV1
 
 
 def test_simple_regex_tokenizer_encode():
-    vocabulary = {"Hello": 1, "world": 2, "!": 3}
-    tokenizer = SimpleRegexTokenizerV1(vocabulary)
-    text = "Hello world!"
-    result = tokenizer.encode(text)
-    assert result == [1, 2, 3]
-
-
-def test_simple_regex_tokenizer_encode_key_error():
-    vocabulary = {"Hello": 1, "world": 2}
-    tokenizer = SimpleRegexTokenizerV1(vocabulary)
-    text = "Hello world!"
-    with pytest.raises(ValueError, match="Token '!' not found in vocabulary."):
-        tokenizer.encode(text)
+    tokenizer = SimpleRegexTokenizerV1(vocabulary=["Hello", "world", "!"])
+    actual = tokenizer.encode("Hello world!")
+    assert actual == [1, 2, 0]
 
 
 def test_simple_regex_tokenizer_decode():
-    vocabulary = {"Hello": 1, "world": 2, "!": 3}
-    tokenizer = SimpleRegexTokenizerV1(vocabulary)
-    result = tokenizer.decode([1, 2, 3])
-    assert result == "Hello world!"
+    tokenizer = SimpleRegexTokenizerV1(vocabulary=["Hello", "world", "!"])
+    actual = tokenizer.decode([1, 2, 0])
+    assert actual == "Hello world!"
 
 
 def test_simple_regex_tokenizer_decode_key_error():
-    vocabulary = {"Hello": 1, "world": 2}
-    tokenizer = SimpleRegexTokenizerV1(vocabulary)
-    with pytest.raises(ValueError, match="Identifier '3' not found in reverse vocabulary."):
-        tokenizer.decode([1, 2, 3])
+    tokenizer = SimpleRegexTokenizerV1(vocabulary=["Hello", "world"])
+    with pytest.raises(ValueError, match="Identifier '2' not found in reverse vocabulary."):
+        tokenizer.decode([0, 1, 2])
+
+
+def test_simple_regex_tokenizer_encode_key_error():
+    tokenizer = SimpleRegexTokenizerV1(vocabulary=["Hello", "world"])
+    text = "Hello world!"
+    with pytest.raises(ValueError, match="Token '!' not found in vocabulary."):
+        tokenizer.encode(text)
