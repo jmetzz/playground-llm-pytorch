@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Annotated
 
 import tiktoken
+import torch
 import typer
 
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
@@ -95,6 +96,42 @@ def dataloader(batch_size: int = 1, stride: int = 1, max_len: int = 4, decode: b
     second_batch = next(data_iter)
     output = [[encoder.decode(row.tolist()) for row in tensor] for tensor in second_batch] if decode else second_batch
     print(f"Second batch: {output}")
+
+
+@app.command()
+def embedding(
+    batch_size: int = 8,
+    stride: int = 4,
+    max_len: int = 4,
+    output_dim: int = 256,
+):
+    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
+    content = load_text_file(the_verdict_file)
+
+    encoder = tiktoken.get_encoding("gpt2")
+    dataloader = create_dataloader_v1(
+        text=content, encoder=encoder, batch_size=batch_size, stride=stride, max_length=max_len, shuffle=False
+    )
+    data_iter = iter(dataloader)
+
+    inputs, _ = next(data_iter)
+    print(f"Token IDs: {inputs}")
+    print(f"Inputs shape: {inputs.shape}")  # [8, 4]
+
+    vocab_size = 50257
+    token_embedding_layer = torch.nn.Embedding(vocab_size, output_dim)
+    token_embeddings = token_embedding_layer(inputs)
+    print(token_embeddings.shape)  # [8, 4, 256]
+
+    context_length = max_len
+    positional_embedding_layer = torch.nn.Embedding(context_length, output_dim)
+    # torch.arange(...) - placeholder vector which contains a sequence
+    # of numbers 0, 1, ..., up to the maximum input `length - 1`
+    positional_embeddings = positional_embedding_layer(torch.arange(context_length))
+    print(positional_embeddings.shape)  # [4, 256]
+
+    input_embeddings = token_embeddings + positional_embeddings
+    print(input_embeddings.shape)  # [8, 4, 256]
 
 
 if __name__ == "__main__":
