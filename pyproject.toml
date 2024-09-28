@@ -18,6 +18,8 @@ changelog = "https://github.com/jmetzz/playground_llm/blob/master/changelog.md"
 python = ">=3.11.0,<3.13"
 typer = "0.12.5"
 
+torch = "^2.4.1"
+tiktoken = "^0.7.0"
 [tool.poetry.group.dev.dependencies]
 hypothesis = "^6.112.1"
 ipdb = "^0.13.13"
@@ -112,7 +114,7 @@ ignore = []
   "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
   "SLF",     # flake8-self
 ]
-"cli.py" = ["T20"]
+"cli.py" = ["T20", "FBT"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
