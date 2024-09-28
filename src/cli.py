@@ -4,11 +4,12 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
+import tiktoken
 import typer
 
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
-from utils import load_text_file
+from utils.data import create_dataloader_v1, load_text_file
 
 app = typer.Typer()
 
@@ -73,6 +74,27 @@ def tokenize_v2():
     ids = tokenizer.encode(text)
     print(ids)
     print(tokenizer.decode(ids))
+
+
+@app.command()
+def dataloader(batch_size: int = 1, stride: int = 1, max_len: int = 4, decode: bool = True):
+    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
+    content = load_text_file(the_verdict_file)
+
+    encoder = tiktoken.get_encoding("gpt2")
+
+    dataloader = create_dataloader_v1(
+        text=content, encoder=encoder, batch_size=batch_size, stride=stride, max_length=max_len, shuffle=False
+    )
+    data_iter = iter(dataloader)
+
+    first_batch = next(data_iter)
+    output = [[encoder.decode(row.tolist()) for row in tensor] for tensor in first_batch] if decode else first_batch
+    print(f"First batch: {output}")
+
+    second_batch = next(data_iter)
+    output = [[encoder.decode(row.tolist()) for row in tensor] for tensor in second_batch] if decode else second_batch
+    print(f"Second batch: {output}")
 
 
 if __name__ == "__main__":
