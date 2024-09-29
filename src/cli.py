@@ -8,6 +8,7 @@ import tiktoken
 import torch
 import typer
 
+from playground_llm import build_embeddings
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
 from utils.data import create_dataloader_v1, load_text_file
@@ -114,24 +115,76 @@ def embedding(
     )
     data_iter = iter(dataloader)
 
-    inputs, _ = next(data_iter)
-    print(f"Token IDs: {inputs}")
-    print(f"Inputs shape: {inputs.shape}")  # [8, 4]
+    input_tokens, _ = next(data_iter)
+    print(f"Token IDs: {input_tokens}")
+    print(f"Inputs shape: {input_tokens.shape}")  # [8, 4]
 
-    vocab_size = 50257
-    token_embedding_layer = torch.nn.Embedding(vocab_size, output_dim)
-    token_embeddings = token_embedding_layer(inputs)
-    print(token_embeddings.shape)  # [8, 4, 256]
-
-    context_length = max_len
-    positional_embedding_layer = torch.nn.Embedding(context_length, output_dim)
-    # torch.arange(...) - placeholder vector which contains a sequence
-    # of numbers 0, 1, ..., up to the maximum input `length - 1`
-    positional_embeddings = positional_embedding_layer(torch.arange(context_length))
-    print(positional_embeddings.shape)  # [4, 256]
-
-    input_embeddings = token_embeddings + positional_embeddings
+    input_embeddings = build_embeddings(
+        inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=output_dim, context_length=max_len
+    )
     print(input_embeddings.shape)  # [8, 4, 256]
+
+
+@app.command()
+def qkv_matrices():  # noqa: PLR0914
+    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
+    content = load_text_file(the_verdict_file)
+
+    encoder = tiktoken.get_encoding("gpt2")
+    dataloader = create_dataloader_v1(
+        text=content, encoder=encoder, batch_size=8, stride=1, max_length=1, shuffle=False
+    )
+    data_iter = iter(dataloader)
+
+    input_tokens, _ = next(data_iter)
+    print(f"Batch inputs shape: {input_tokens.shape}")  # [8, 1]
+    print(f"Token IDs: {input_tokens}")
+
+    # 3 dimension word-by-word embedding, dictated by `output_dim=3` and `context_length=1`
+    input_embeddings = build_embeddings(
+        inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
+    )
+    print(f"Inputs embeddings shape: {input_embeddings.shape}")  # [8, 1, 3]
+    print(f"Inputs embeddings:\n{input_embeddings}")
+
+    print(">>> Calculate the qkv vectors for the second element in the batch")
+    input_2 = input_embeddings[1]
+    print(f"x_2 shape: {input_2.shape}")  # [1, 3]
+
+    torch.manual_seed(123)
+    _, d_in = input_2.shape
+    d_out = 2  # using output 2 just for simplicity
+
+    # set `requires_grad=True` to update these matrices during model training
+    w_query = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
+    w_key = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
+    w_value = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
+
+    print(f"W_q shape: {w_query.shape}")  # Shape [3, 2]
+    print(f"W_k shape: {w_key.shape}")  # Shape [3, 2]
+    print(f"W_v shape: {w_value.shape}")  # Shape [3, 2]
+
+    query_2 = input_2 @ w_query
+    key_2 = input_2 @ w_key
+    value_2 = input_2 @ w_value
+
+    print(f"\nquery_2 shape: {query_2.shape}")  # Shape [1, 2]
+    print(f"query_2: {query_2}")
+    print(f"key_2: {key_2}")
+    print(f"value_2: {value_2}\n")
+
+    print("\n>>> Calculate the full matrices for the batch:")
+    queries = input_embeddings @ w_query
+    keys = input_embeddings @ w_key
+    values = input_embeddings @ w_value
+
+    print("\n>>> Projections:")
+    print(f"queries: \n{queries}")
+    print(f"keys: \n{keys}")
+    print(f"values: \n{values}")
+    print(f"queries shape: {queries.shape}")  # Shape [8, 1, 2]
+    print(f"keys shape: {keys.shape}")  # Shape [8, 1, 2]
+    print(f"values shape: {values.shape}")  # Shape [8, 1, 2]
 
 
 if __name__ == "__main__":
