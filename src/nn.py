@@ -47,3 +47,39 @@ def build_qkv_matrices(
     )
 
     return queries, keys, values
+
+
+class SelfAttentionV1(torch.nn.Module):
+    def __init__(self, input_dim: int, output_dim: int, seed: int = 123) -> None:
+        super().__init__()
+        torch.manual_seed(seed)
+        self._w_query = torch.nn.Parameter(torch.rand(input_dim, output_dim))
+        self._w_key = torch.nn.Parameter(torch.rand(input_dim, output_dim))
+        self._w_value = torch.nn.Parameter(torch.rand(input_dim, output_dim))
+
+    def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+        queries = embeddings @ self._w_query
+        keys = embeddings @ self._w_key
+        values = embeddings @ self._w_value
+
+        attention_scores = queries @ keys.T
+        attention_weights = torch.softmax(attention_scores / keys.shape[-1] ** 0.5, dim=-1)
+        return attention_weights @ values  # context vectors
+
+
+class SelfAttentionV2(torch.nn.Module):
+    def __init__(self, input_dim: int, output_dim: int, qkv_bias: bool = False, seed: int = 123) -> None:
+        super().__init__()
+        torch.manual_seed(seed)
+        self._w_query = torch.nn.Linear(input_dim, output_dim, bias=qkv_bias)
+        self._w_key = torch.nn.Linear(input_dim, output_dim, bias=qkv_bias)
+        self._w_value = torch.nn.Linear(input_dim, output_dim, bias=qkv_bias)
+
+    def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+        queries = self._w_query(embeddings)
+        keys = self._w_key(embeddings)
+        values = self._w_value(embeddings)
+
+        attention_scores = queries @ keys.T
+        attention_weights = torch.softmax(attention_scores / keys.shape[-1] ** 0.5, dim=-1)
+        return attention_weights @ values  # context vectors
