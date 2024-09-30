@@ -4,20 +4,21 @@ version = "0.1.0"
 description = "playground-llm"
 authors = ["Jean Metz"]
 readme = "README.md"
-homepage = "https://github.com/jmetzz/playground_llm"
-repository = "https://github.com/jmetzz/playground_llm"
 packages = [{ include = "playground_llm", from = "src" }, { include = "tests" }]
 license = "MIT"
 keywords = ["playground_llm"]
 
 [project.urls]
-bugs = "https://github.com/jmetzz/playground_llm/issues"
-changelog = "https://github.com/jmetzz/playground_llm/blob/master/changelog.md"
+Homepage = "https://github.com/jmetzz/playground_llm"
+Repository = "https://github.com/jmetzz/playground_llm"
+Issues = "https://github.com/jmetzz/playground_llm/issues"
+Changelog = "https://github.com/jmetzz/playground_llm/blob/master/changelog.md"
+# Documentation = "https://readthedocs.org" # auto gen docs not in place yet
+
 
 [tool.poetry.dependencies]
 python = ">=3.11.0,<3.13"
 typer = "0.12.5"
-
 torch = "^2.4.1"
 tiktoken = "^0.7.0"
 [tool.poetry.group.dev.dependencies]
