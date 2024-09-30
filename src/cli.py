@@ -1,5 +1,6 @@
 """Command-line interface."""
 
+import logging
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -7,13 +8,17 @@ from typing import Annotated
 import tiktoken
 import torch
 import typer
+from colorama import Fore, Style
 
-from playground_llm import build_embeddings
+from playground_llm import build_embeddings, build_qkv_matrices
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
 from utils.data import create_dataloader_v1, load_text_file
 
 app = typer.Typer()
+
+LOGGER = logging.getLogger()
+logging.basicConfig(level=logging.DEBUG)
 
 
 class SplitterOptions(StrEnum):
@@ -99,6 +104,15 @@ def dataloader(batch_size: int = 1, stride: int = 1, max_len: int = 4, decode: b
     print(f"Second batch: {output}")
 
 
+def get_encoder_and_batch_iterator(file_path: Path) -> tuple:
+    content = load_text_file(file_path)
+    encoder = tiktoken.get_encoding("gpt2")
+    dataloader = create_dataloader_v1(
+        text=content, encoder=encoder, batch_size=8, stride=1, max_length=1, shuffle=False
+    )
+    return encoder, iter(dataloader)
+
+
 @app.command()
 def embedding(
     batch_size: int = 8,
@@ -126,15 +140,11 @@ def embedding(
 
 
 @app.command()
-def qkv_matrices():  # noqa: PLR0914
+def qkv_matrices():
     the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
-    content = load_text_file(the_verdict_file)
-
-    encoder = tiktoken.get_encoding("gpt2")
-    dataloader = create_dataloader_v1(
-        text=content, encoder=encoder, batch_size=8, stride=1, max_length=1, shuffle=False
-    )
-    data_iter = iter(dataloader)
+    # with default parameters for illustration purposes:
+    #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
+    encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
 
     input_tokens, _ = next(data_iter)
     print(f"Batch inputs shape: {input_tokens.shape}")  # [8, 1]
@@ -144,47 +154,29 @@ def qkv_matrices():  # noqa: PLR0914
     input_embeddings = build_embeddings(
         inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
     )
-    print(f"Inputs embeddings shape: {input_embeddings.shape}")  # [8, 1, 3]
+    print(
+        f"Inputs embeddings shape: {input_embeddings.shape}"
+    )  # [8, 1, 3] (batch_size=8, context_length=1, output_dim=3)
     print(f"Inputs embeddings:\n{input_embeddings}")
 
-    print(">>> Calculate the qkv vectors for the second element in the batch")
+    print(Fore.CYAN + ">>> Calculate the qkv vectors for the second element in the batch" + Fore.RESET)
     input_2 = input_embeddings[1]
-    print(f"x_2 shape: {input_2.shape}")  # [1, 3]
+    print(f"x_2 shape: {input_2.shape}")  # [1, 3] (context_length=1, output_dim=3)
 
-    torch.manual_seed(123)
-    _, d_in = input_2.shape
-    d_out = 2  # using output 2 just for simplicity
+    print("\n" + Fore.CYAN + ">>> Calculate the full matrices for the batch:" + Fore.RESET)
+    # using output_dim=2 just for simplicity
+    queries, keys, values = build_qkv_matrices(input_embeddings, input_dim=input_embeddings.shape[2], output_dim=2)
 
-    # set `requires_grad=True` to update these matrices during model training
-    w_query = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
-    w_key = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
-    w_value = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
-
-    print(f"W_q shape: {w_query.shape}")  # Shape [3, 2]
-    print(f"W_k shape: {w_key.shape}")  # Shape [3, 2]
-    print(f"W_v shape: {w_value.shape}")  # Shape [3, 2]
-
-    query_2 = input_2 @ w_query
-    key_2 = input_2 @ w_key
-    value_2 = input_2 @ w_value
-
-    print(f"\nquery_2 shape: {query_2.shape}")  # Shape [1, 2]
-    print(f"query_2: {query_2}")
-    print(f"key_2: {key_2}")
-    print(f"value_2: {value_2}\n")
-
-    print("\n>>> Calculate the full matrices for the batch:")
-    queries = input_embeddings @ w_query
-    keys = input_embeddings @ w_key
-    values = input_embeddings @ w_value
-
-    print("\n>>> Projections:")
-    print(f"queries: \n{queries}")
-    print(f"keys: \n{keys}")
-    print(f"values: \n{values}")
+    print("\n" + Fore.CYAN + "Projections:" + Fore.RESET)
     print(f"queries shape: {queries.shape}")  # Shape [8, 1, 2]
+    print(f"queries: \n{queries}")
+
     print(f"keys shape: {keys.shape}")  # Shape [8, 1, 2]
+    print(f"keys: \n{keys}")
+
     print(f"values shape: {values.shape}")  # Shape [8, 1, 2]
+    print(f"values: \n{values}")
+
 
 
 if __name__ == "__main__":
