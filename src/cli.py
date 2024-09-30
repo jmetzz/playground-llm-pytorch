@@ -178,6 +178,53 @@ def qkv_matrices():
     print(f"values: \n{values}")
 
 
+@app.command()
+def attention():
+    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
+    # with default parameters for illustration purposes:
+    #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
+    encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
+    input_tokens, _ = next(data_iter)
+    input_embeddings = build_embeddings(
+        inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
+    )
+
+    queries, keys, values = build_qkv_matrices(input_embeddings, input_dim=input_embeddings.shape[2], output_dim=2)
+
+    print(Fore.CYAN + ">>> Get the second input element (input_2)" + Fore.RESET)
+    print(f"\nquery_2 shape: {queries[1].shape}")  # Shape [1, 2]
+    print(f"query_2: {queries[1]}")
+    print(f"key_2: {keys[1]}")
+    print(f"value_2: {values[1]}\n")
+
+    print(Fore.CYAN + ">>> Compute the attention score wrt query_2" + Fore.RESET)
+    # need to flatten the tensors since dot product only works on 1D tensors.
+    attn_score_22 = torch.dot(queries[1].flatten(), keys[1].flatten())
+    print(f"unnormalized attn_score_22: {attn_score_22:.4f}")
+
+    print(Fore.CYAN + "\n>>> Calculate the context vector:" + Fore.RESET)
+    print(f"\nquery_2 shape: {queries[1].shape}")  # Shape [1, 2]
+    print(f"keys transposed shape: {keys.permute(0, 2, 1).shape}")  # Shape [8, 2, 1]
+    attention_scores_2 = queries[1] @ keys.permute(0, 2, 1)  # Align the matrices dimensions
+    attention_scores_2 = attention_scores_2.squeeze(-1).squeeze(-1)
+    print(f"unnormalized attention scores: \n{attention_scores_2}")
+
+    # sanity check
+    print(Fore.RED + "Sanity check:" + Fore.RESET)
+    print(
+        Style.DIM
+        + "The unscaled attention score is computed as a dot product between the query and the keys vectors."
+        + Style.NORMAL
+    )
+    print(f"{attn_score_22:.5f} == {attention_scores_2[1].item():.5f}")
+
+    print(Fore.CYAN + "\n>>> Scaling the attention weights" + Fore.RESET)
+    scaling_factor = keys.shape[-1] ** 0.5  # mathematically equivalent to the square root
+    attention_weights_2 = torch.softmax(attention_scores_2 / scaling_factor, dim=-1)
+
+    print(f"Attention weights shape: {attention_weights_2.shape}")
+    print(f"Attention weights: {attention_weights_2}")
+
 
 if __name__ == "__main__":
     app()
