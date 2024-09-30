@@ -5,6 +5,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
+import colorama
 import tiktoken
 import torch
 import typer
@@ -14,6 +15,9 @@ from nn import SelfAttentionV1, SelfAttentionV2, build_embeddings, build_qkv_mat
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
 from utils.data import create_dataloader_v1, load_text_file
+from utils.io import print_attention_matrix
+
+colorama.init(autoreset=True)
 
 app = typer.Typer()
 
@@ -90,18 +94,18 @@ def dataloader(batch_size: int = 1, stride: int = 1, max_len: int = 4, decode: b
 
     encoder = tiktoken.get_encoding("gpt2")
 
-    dataloader = create_dataloader_v1(
+    data_loader = create_dataloader_v1(
         text=content, encoder=encoder, batch_size=batch_size, stride=stride, max_length=max_len, shuffle=False
     )
-    data_iter = iter(dataloader)
+    data_iter = iter(data_loader)
 
     first_batch = next(data_iter)
     output = [[encoder.decode(row.tolist()) for row in tensor] for tensor in first_batch] if decode else first_batch
-    print(f"First batch: {output}")
+    print(Fore.BLUE + "First batch: " + Fore.RESET + f"{output}")
 
     second_batch = next(data_iter)
     output = [[encoder.decode(row.tolist()) for row in tensor] for tensor in second_batch] if decode else second_batch
-    print(f"Second batch: {output}")
+    print(Fore.GREEN + "Second batch: " + Fore.RESET + f"{output}")
 
 
 def get_encoder_and_batch_iterator(file_path: Path) -> tuple:
@@ -124,19 +128,22 @@ def embedding(
     content = load_text_file(the_verdict_file)
 
     encoder = tiktoken.get_encoding("gpt2")
-    dataloader = create_dataloader_v1(
+    data_loader = create_dataloader_v1(
         text=content, encoder=encoder, batch_size=batch_size, stride=stride, max_length=max_len, shuffle=False
     )
-    data_iter = iter(dataloader)
+    data_iter = iter(data_loader)
 
-    input_tokens, _ = next(data_iter)
-    print(f"Token IDs: {input_tokens}")
-    print(f"Inputs shape: {input_tokens.shape}")  # [8, 4]
+    batch_tokens, _ = next(data_iter)
+    print(Fore.CYAN + "Token IDs:")
+    print(f"{batch_tokens}")
+    print(Fore.CYAN + "Inputs shape:")
+    print(f"{batch_tokens.shape}")  # [8, 4]
 
-    input_embeddings = build_embeddings(
-        inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=output_dim, context_length=max_len
+    batch_embeddings = build_embeddings(
+        inputs=batch_tokens, vocab_size=encoder.max_token_value, output_dim=output_dim, context_length=max_len
     )
-    print(input_embeddings.shape)  # [8, 4, 256]
+    print(Fore.CYAN + "Embeddings shape:")
+    print(batch_embeddings.shape)  # [8, 4, 256]
 
 
 @app.command()
@@ -146,27 +153,27 @@ def qkv():
     #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
     encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
 
-    input_tokens, _ = next(data_iter)
-    print(f"Batch inputs shape: {input_tokens.shape}")  # [8, 1]
-    print(f"Token IDs: {input_tokens}")
+    batch_tokens, _ = next(data_iter)
+    print(f"Batch inputs shape: {batch_tokens.shape}")  # [8, 1]
+    print(f"Token IDs: {batch_tokens}")
 
     # 3 dimension word-by-word embedding, dictated by `output_dim=3` and `context_length=1`
-    input_embeddings = build_embeddings(
-        inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
+    batch_embeddings = build_embeddings(
+        inputs=batch_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
     )
 
     print(
-        f"Inputs embeddings shape: {input_embeddings.shape}"
+        f"Inputs embeddings shape: {batch_embeddings.shape}"
     )  # [8, 1, 3] (batch_size=8, context_length=1, output_dim=3)
-    print(f"Inputs embeddings:\n{input_embeddings}")
+    print(f"Inputs embeddings:\n{batch_embeddings}")
 
     print(Fore.CYAN + ">>> Calculate the qkv vectors for the second element in the batch" + Fore.RESET)
-    input_2 = input_embeddings[1]
+    input_2 = batch_embeddings[1]
     print(f"x_2 shape: {input_2.shape}")  # [1, 3] (context_length=1, output_dim=3)
 
     print("\n" + Fore.CYAN + ">>> Calculate the full matrices for the batch:" + Fore.RESET)
     # using output_dim=2 just for simplicity
-    queries, keys, values = build_qkv_matrices(input_embeddings, input_dim=input_embeddings.shape[2], output_dim=2)
+    queries, keys, values = build_qkv_matrices(batch_embeddings, input_dim=batch_embeddings.shape[2], output_dim=2)
 
     print("\n" + Fore.CYAN + "Projections:" + Fore.RESET)
     print(Fore.GREEN + f"queries shape: {queries.shape}" + Fore.RESET)  # Shape [8, 1, 2]
@@ -180,17 +187,17 @@ def qkv():
 
 
 @app.command()
-def attention_for_one_element():  # noqa: PLR0914
+def attention_for_one():  # noqa: PLR0914
     the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
     # with default parameters for illustration purposes:
     #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
     encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
-    input_tokens, _ = next(data_iter)
-    input_embeddings = build_embeddings(
-        inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
+    batch_tokens, _ = next(data_iter)
+    batch_embeddings = build_embeddings(
+        inputs=batch_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
     ).squeeze(1)
 
-    queries, keys, values = build_qkv_matrices(input_embeddings, input_dim=input_embeddings.shape[1], output_dim=2)
+    queries, keys, values = build_qkv_matrices(batch_embeddings, input_dim=batch_embeddings.shape[1], output_dim=2)
 
     query_2 = queries[1]
     key_2 = keys[1]
@@ -276,18 +283,18 @@ def transfer_weights(from_model: SelfAttentionV2, to_model: SelfAttentionV1) -> 
 def attention():
     the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
     encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
-    input_tokens, _ = next(data_iter)
-    input_embeddings = build_embeddings(
-        inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
+    batch_tokens, _ = next(data_iter)
+    batch_embeddings = build_embeddings(
+        inputs=batch_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
     ).squeeze(1)
 
-    attention_v1 = SelfAttentionV1(input_dim=input_embeddings.shape[1], output_dim=2)
+    attention_v1 = SelfAttentionV1(input_dim=batch_embeddings.shape[1], output_dim=2)
     print(Fore.CYAN + "SelfAttentionV1:" + Fore.RESET)
-    print(attention_v1(input_embeddings))  # implicitly call the forward method
+    print(attention_v1(batch_embeddings))  # implicitly call the forward method
 
-    attention_v2 = SelfAttentionV2(input_dim=input_embeddings.shape[1], output_dim=2)
+    attention_v2 = SelfAttentionV2(input_dim=batch_embeddings.shape[1], output_dim=2)
     print(Fore.GREEN + "SelfAttentionV2:" + Fore.RESET)
-    print(attention_v2(input_embeddings))
+    print(attention_v2(batch_embeddings))
 
     # Verify both are equivalent in working by transferring
     # the weights from attention_v2 to attention_v1
@@ -298,7 +305,7 @@ def attention():
     # In SelfAttentionV1, the weights are raw torch.nn.Parameter objects.
     transfer_weights(from_model=attention_v2, to_model=attention_v1)
     print(Fore.YELLOW + "disguised SelfAttentionV2:" + Fore.RESET)
-    print(attention_v1(input_embeddings))
+    print(attention_v1(batch_embeddings))
 
 
 if __name__ == "__main__":
