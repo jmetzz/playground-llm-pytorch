@@ -35,8 +35,8 @@ def create_dataloader_v1(  # noqa: PLR0913, PLR0917
     batch_size: int = 4,
     max_length: int = 256,
     stride: int = 128,
-    shuffle: bool = True,  # noqa: FBT001, FBT002
-    drop_last: bool = True,  # noqa: FBT001, FBT002
+    shuffle: bool = True,
+    drop_last: bool = True,
     num_workers: int = 0,
 ):
     dataset = GPTDatasetV1(text, encoder, max_length, stride)

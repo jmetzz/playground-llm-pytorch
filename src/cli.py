@@ -10,7 +10,7 @@ import torch
 import typer
 from colorama import Fore, Style
 
-from playground_llm import build_embeddings, build_qkv_matrices
+from nn import SelfAttentionV1, SelfAttentionV2, build_embeddings, build_qkv_matrices
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
 from utils.data import create_dataloader_v1, load_text_file
@@ -180,7 +180,7 @@ def qkv():
 
 
 @app.command()
-def attention():  # noqa: PLR0914
+def attention_for_one_element():  # noqa: PLR0914
     the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
     # with default parameters for illustration purposes:
     #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
@@ -261,6 +261,44 @@ def attention():  # noqa: PLR0914
     print()
     print(f"Context vector shape: {context_vectors.shape}")
     print(Fore.GREEN + f"Context vector: {context_vectors}" + Fore.RESET)
+
+
+def transfer_weights(from_model: SelfAttentionV2, to_model: SelfAttentionV1) -> None:
+    # Transfer query weights
+    to_model._w_query.data = from_model._w_query.weight.data.T  # Transpose to match the shape  # noqa: SLF001
+    # Transfer key weights
+    to_model._w_key.data = from_model._w_key.weight.data.T  # Transpose to match the shape  # noqa: SLF001
+    # Transfer value weights
+    to_model._w_value.data = from_model._w_value.weight.data.T  # Transpose to match the shape  # noqa: SLF001
+
+
+@app.command()
+def attention():
+    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
+    encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
+    input_tokens, _ = next(data_iter)
+    input_embeddings = build_embeddings(
+        inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
+    ).squeeze(1)
+
+    attention_v1 = SelfAttentionV1(input_dim=input_embeddings.shape[1], output_dim=2)
+    print(Fore.CYAN + "SelfAttentionV1:" + Fore.RESET)
+    print(attention_v1(input_embeddings))  # implicitly call the forward method
+
+    attention_v2 = SelfAttentionV2(input_dim=input_embeddings.shape[1], output_dim=2)
+    print(Fore.GREEN + "SelfAttentionV2:" + Fore.RESET)
+    print(attention_v2(input_embeddings))
+
+    # Verify both are equivalent in working by transferring
+    # the weights from attention_v2 to attention_v1
+    # and checking if the output is the same for both attention objects
+    # Here's the key difference:
+    # In SelfAttentionV2, the weights and biases are encapsulated within torch.nn.Linear layers.
+    # To access the weights, we use .weight and for the bias (if used), .bias.
+    # In SelfAttentionV1, the weights are raw torch.nn.Parameter objects.
+    transfer_weights(from_model=attention_v2, to_model=attention_v1)
+    print(Fore.YELLOW + "disguised SelfAttentionV2:" + Fore.RESET)
+    print(attention_v1(input_embeddings))
 
 
 if __name__ == "__main__":

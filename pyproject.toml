@@ -81,7 +81,7 @@ select = [
   "FURB", # refurb - A tool for refurbishing and modernizing Python codebases.
   "G",    # flake8-logging-format
   "FAST", # FastAPI
-  "FBT",  # flake8-boolean-trap
+  # "FBT",  # flake8-boolean-trap
   "I",    # isort
   "LOG",  # flake8-logging
   "N",    # pep8-naming
