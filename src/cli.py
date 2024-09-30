@@ -14,7 +14,7 @@ from colorama import Fore, Style
 from nn import SelfAttentionV1, SelfAttentionV2, build_embeddings, build_qkv_matrices
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
-from utils.data import create_dataloader_v1, load_text_file
+from utils.data import create_dataloader_v1, get_encoder_and_batch_iterator, load_text_file
 from utils.io import print_attention_matrix
 
 colorama.init(autoreset=True)
@@ -88,129 +88,175 @@ def tokenize_v2():
 
 
 @app.command()
-def dataloader(batch_size: int = 1, stride: int = 1, max_len: int = 4, decode: bool = True):
-    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
-    content = load_text_file(the_verdict_file)
-
-    encoder = tiktoken.get_encoding("gpt2")
-
-    data_loader = create_dataloader_v1(
-        text=content, encoder=encoder, batch_size=batch_size, stride=stride, max_length=max_len, shuffle=False
+def dataloader():
+    _, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=8,
+        stride=4,
+        seq_length=4,
     )
     data_iter = iter(data_loader)
+    batch_tokens, batch_labels = next(data_iter)
 
-    first_batch = next(data_iter)
-    output = [[encoder.decode(row.tolist()) for row in tensor] for tensor in first_batch] if decode else first_batch
-    print(Fore.BLUE + "First batch: " + Fore.RESET + f"{output}")
+    print(Fore.CYAN + "Token IDs:")
+    print(f"Batch inputs shape: {batch_tokens.shape}")  # [8, 1]
+    print(f"{batch_tokens}")
 
-    second_batch = next(data_iter)
-    output = [[encoder.decode(row.tolist()) for row in tensor] for tensor in second_batch] if decode else second_batch
-    print(Fore.GREEN + "Second batch: " + Fore.RESET + f"{output}")
-
-
-def get_encoder_and_batch_iterator(file_path: Path) -> tuple:
-    content = load_text_file(file_path)
-    encoder = tiktoken.get_encoding("gpt2")
-    dataloader = create_dataloader_v1(
-        text=content, encoder=encoder, batch_size=8, stride=1, max_length=1, shuffle=False
-    )
-    return encoder, iter(dataloader)
+    print(Fore.YELLOW + "Label IDs:")
+    print(f"{batch_labels}")
+    print()
 
 
 @app.command()
-def embedding(
+def codec():
+    encoder, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=1,
+        stride=1,
+        seq_length=4,
+    )
+    data_iter = iter(data_loader)
+    print(Fore.CYAN + ">>> Testing data loader with parameters:")
+    print(Fore.CYAN + "\t batch_size: 1")
+    print(Fore.CYAN + "\t stride: 1")
+    print(Fore.CYAN + "\t seq_length: 4")
+
+    for idx in range(2):
+        batch_tokens, batch_labels = next(data_iter)
+        batch_tokens = batch_tokens.squeeze()
+        batch_labels = batch_labels.squeeze()
+
+        print(Fore.YELLOW + f">>> Batch #{idx}")
+        print(Fore.LIGHTCYAN_EX + "encoded tokens: " + Fore.RESET + f"{batch_tokens}")
+        print(Fore.LIGHTCYAN_EX + "encoded label: " + Fore.RESET + f"{batch_labels}")
+
+        output = [encoder.decode([element]) for element in batch_tokens]
+        print(Fore.BLUE + "decoded tokens: " + Fore.RESET + f"{output}")
+        output = [encoder.decode([element]) for element in batch_labels]
+        print(Fore.BLUE + "decoded label: " + Fore.RESET + f"{output}")
+
+
+@app.command()
+def embed(
     batch_size: int = 8,
     stride: int = 4,
-    max_len: int = 4,
-    output_dim: int = 256,
+    seq_length: int = 4,
+    output_dim: int = 3,
 ):
-    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
-    content = load_text_file(the_verdict_file)
-
-    encoder = tiktoken.get_encoding("gpt2")
-    data_loader = create_dataloader_v1(
-        text=content, encoder=encoder, batch_size=batch_size, stride=stride, max_length=max_len, shuffle=False
+    encoder, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=batch_size,
+        stride=stride,
+        seq_length=seq_length,
     )
     data_iter = iter(data_loader)
 
     batch_tokens, _ = next(data_iter)
+    print(Fore.CYAN + "Batch tokens shape:")
+    print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
     print(Fore.CYAN + "Token IDs:")
     print(f"{batch_tokens}")
-    print(Fore.CYAN + "Inputs shape:")
-    print(f"{batch_tokens.shape}")  # [8, 4]
 
     batch_embeddings = build_embeddings(
-        inputs=batch_tokens, vocab_size=encoder.max_token_value, output_dim=output_dim, context_length=max_len
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=output_dim, seq_length=seq_length
     )
     print(Fore.CYAN + "Embeddings shape:")
-    print(batch_embeddings.shape)  # [8, 4, 256]
+    print(batch_embeddings.shape)  # [8, 4, output_dim]
+    print(Fore.CYAN + "Embeddings:")
+    print(batch_embeddings)
 
 
 @app.command()
-def qkv():
-    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
-    # with default parameters for illustration purposes:
-    #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
-    encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
+def qkv(embeddings_dim: int = 3, qkv_dim: int = 2):
+    # Using parameters (batch_size=8, stride=1, seq_length=1)
+    # for illustration purposes.
+    # This results batches of 8 sample, each sample comprised of 4 tokens (seq_length)
+    seq_length = 4
 
+    encoder, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=8,
+        stride=4,
+        seq_length=seq_length,
+    )
+    data_iter = iter(data_loader)
     batch_tokens, _ = next(data_iter)
-    print(f"Batch inputs shape: {batch_tokens.shape}")  # [8, 1]
-    print(f"Token IDs: {batch_tokens}")
 
-    # 3 dimension word-by-word embedding, dictated by `output_dim=3` and `context_length=1`
+    # 3 dimension word-by-word embedding, dictated by `output_dim=3` and `context_length=seq_length`
     batch_embeddings = build_embeddings(
-        inputs=batch_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=embeddings_dim, seq_length=seq_length
     )
 
-    print(
-        f"Inputs embeddings shape: {batch_embeddings.shape}"
-    )  # [8, 1, 3] (batch_size=8, context_length=1, output_dim=3)
-    print(f"Inputs embeddings:\n{batch_embeddings}")
+    print(Fore.CYAN + "Batch tokens shape:")
+    print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
+    print(Fore.CYAN + "Embeddings shape:")
+    print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
 
-    print(Fore.CYAN + ">>> Calculate the qkv vectors for the second element in the batch" + Fore.RESET)
+    print(Fore.CYAN + ">>> Calculate the qkv vectors for the 2nd element in the batch" + Fore.RESET)
     input_2 = batch_embeddings[1]
-    print(f"x_2 shape: {input_2.shape}")  # [1, 3] (context_length=1, output_dim=3)
+    print(f"x_2 shape: {input_2.shape}")  # [seq_length, output_dim]
 
     print("\n" + Fore.CYAN + ">>> Calculate the full matrices for the batch:" + Fore.RESET)
-    # using output_dim=2 just for simplicity
-    queries, keys, values = build_qkv_matrices(batch_embeddings, input_dim=batch_embeddings.shape[2], output_dim=2)
+    # using output_dim=2 as default just for simplicity
+    queries, keys, values = build_qkv_matrices(
+        batch_embeddings, input_dim=batch_embeddings.shape[2], output_dim=qkv_dim
+    )
 
-    print("\n" + Fore.CYAN + "Projections:" + Fore.RESET)
-    print(Fore.GREEN + f"queries shape: {queries.shape}" + Fore.RESET)  # Shape [8, 1, 2]
+    print("\n" + Fore.CYAN + "QKV projections:" + Fore.RESET)
+    print(Fore.GREEN + f"queries shape: {queries.shape}" + Fore.RESET)  # Shape [batch_size, seq_length, qkv_dim]
     print(f"queries: {queries}")
 
-    print(Fore.GREEN + f"keys shape: {keys.shape}" + Fore.RESET)  # Shape [8, 1, 2]
+    print(Fore.GREEN + f"keys shape: {keys.shape}" + Fore.RESET)  # Shape [batch_size, seq_length, qkv_dim]
     print(f"keys: {keys}")
 
-    print(Fore.GREEN + f"values shape: {values.shape}" + Fore.RESET)  # Shape [8, 1, 2]
+    print(Fore.GREEN + f"values shape: {values.shape}" + Fore.RESET)  # Shape [batch_size, seq_length, qkv_dim]
     print(f"values: {values}")
 
 
 @app.command()
-def attention_for_one():  # noqa: PLR0914
-    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
-    # with default parameters for illustration purposes:
-    #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
-    encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
+def attention_for_one(qkv_dim: int = 2):  # noqa: PLR0914
+    # Using parameters (batch_size=8, stride=1, seq_length=1)
+    # for illustration purposes.
+    # This results batches of 8 sample, each sample comprised of 4 tokens (seq_length)
+    seq_length = 4
+    encoder, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=8,
+        stride=4,
+        seq_length=seq_length,
+    )
+    data_iter = iter(data_loader)
     batch_tokens, _ = next(data_iter)
+
     batch_embeddings = build_embeddings(
-        inputs=batch_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
-    ).squeeze(1)
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=3, seq_length=seq_length
+    )
 
-    queries, keys, values = build_qkv_matrices(batch_embeddings, input_dim=batch_embeddings.shape[1], output_dim=2)
+    print(Fore.CYAN + "Batch tokens shape:")
+    print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
+    print(Fore.CYAN + "Embeddings shape:")
+    print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
 
-    query_2 = queries[1]
-    key_2 = keys[1]
+    queries, keys, values = build_qkv_matrices(
+        batch_embeddings, input_dim=batch_embeddings.shape[2], output_dim=qkv_dim
+    )
 
-    print(Fore.CYAN + ">>> Get the second input element (input_2)" + Fore.RESET)
-    print(f"\nquery_2 shape: {query_2.shape}")  # Shape [2]
+    print()
+    print(Fore.CYAN + ">>> Get the 2nd query and key elements" + Fore.RESET)
+    query_2, key_2 = queries[1], keys[1]  # pick up one element for illustration
+
+    print(f"query_2 shape: {query_2.shape}")  # Shape [seq_length, qkv_dim]
     print(f"query_2: {query_2}")
     print(f"key_2: {key_2}")
 
     print(Fore.CYAN + ">>> Compute the attention score for key_2 wrt query_2" + Fore.RESET)
-    # Dot product between query_2 and key_2.
-    attn_score_22 = torch.dot(query_2, key_2)
-    print(f"unscaled attn_score_22: {attn_score_22:.4f}")
+    # Dot product query_2 and each element in key_2.
+    attn_score_2 = query_2 @ key_2.T  # [seq_length, seq_length]
+    print("unscaled attn_score_2:")
+    print(attn_score_2)
+    attn_score_22 = torch.dot(query_2[1], key_2[1])
+    print(Fore.RED + ">>> sanity test:")
+    print(Fore.LIGHTRED_EX + f"{attn_score_22.item():.4f} == {attn_score_2[1][1]:.4f}")
 
     print(Fore.CYAN + "\n>>> Compute the attention scores for all keys wrt query_2:" + Fore.RESET)
     print(Style.DIM + "Unscaled attention scores..." + Style.NORMAL)
@@ -221,23 +267,19 @@ def attention_for_one():  # noqa: PLR0914
     )
     print(f"keys shape: {keys.shape}")
     # Align the matrices for query_2 and keys
-    attention_scores_2 = query_2 @ keys.permute(1, 0)
-    # print(f"attention_scores_2 shape after @ operation: {attention_scores_2.shape}")
-    # print("Squeezing it ...")
-    # attention_scores_2 = attention_scores_2.squeeze(-1)
+    # query_2 shape is [seq_length, qkv_dim]
+    # keys shape is [batch_size, seq_length, qkv_dim]
+    # Reshape keys to have the shape [8*4, 2] i.e., combine the batch and token dimension
+    keys_reshaped = keys.view(-1, keys.shape[-1])  # shape [32, 2]
+
+    # Now compute the dot product of query_2 with all keys
+    # query_2 shape [4, 2], keys_reshaped shape [32, 2]
+    attention_scores_2 = query_2 @ keys_reshaped.T  # shape [4, 32]
     print(
         f"attention_scores_2 shape: {attention_scores_2.shape}"
     )  # [8] representing the attention distribution over the 8 elements in the batch.
     print(f"attention_scores_2: \n {attention_scores_2}")
 
-    # sanity check
-    print(
-        Style.DIM
-        + Fore.RED
-        + f"\t[Sanity check] {attn_score_22:.5f} == {attention_scores_2[1].item():.5f}"
-        + Fore.RESET
-        + Style.NORMAL
-    )
     print()
 
     print(Fore.CYAN + "\n>>> Compute the attention weights" + Fore.RESET)
@@ -259,13 +301,10 @@ def attention_for_one():  # noqa: PLR0914
         # meaning there are 8 elements, each with a value vector of size 2.
     )
 
-    # Firstly, reshape attention_weights_2 to enable proper broadcastingShape:
-    attention_weights_2 = attention_weights_2.unsqueeze(1)
-    print(f"attention_weights_2 reshaped: {attention_weights_2.shape}")  # new shape [8, 1]
+    values_reshaped = values.view(-1, values.shape[-1])  # shape [32, 2]
+    # Multiply attention weights with values and sum along the keys dimension
+    context_vectors = attention_weights_2 @ values_reshaped  # shape [4, 2]
 
-    context_vectors = torch.sum(attention_weights_2 * values, dim=0)
-
-    print()
     print(f"Context vector shape: {context_vectors.shape}")
     print(Fore.GREEN + f"Context vector: {context_vectors}" + Fore.RESET)
 
@@ -281,18 +320,31 @@ def transfer_weights(from_model: SelfAttentionV2, to_model: SelfAttentionV1) -> 
 
 @app.command()
 def attention():
-    the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
-    encoder, data_iter = get_encoder_and_batch_iterator(the_verdict_file)
+    seq_length = 4
+    embedding_dim = 3
+    encoder, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=8,
+        stride=4,
+        seq_length=seq_length,
+    )
+    data_iter = iter(data_loader)
     batch_tokens, _ = next(data_iter)
-    batch_embeddings = build_embeddings(
-        inputs=batch_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
-    ).squeeze(1)
 
-    attention_v1 = SelfAttentionV1(input_dim=batch_embeddings.shape[1], output_dim=2)
+    batch_embeddings = build_embeddings(
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=embedding_dim, seq_length=seq_length
+    )
+
+    print(Fore.CYAN + "Batch tokens shape:")
+    print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
+    print(Fore.CYAN + "Embeddings shape:")
+    print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
+    attention_v1 = SelfAttentionV1(embedding_dim=embedding_dim, output_dim=2)
     print(Fore.CYAN + "SelfAttentionV1:" + Fore.RESET)
+
     print(attention_v1(batch_embeddings))  # implicitly call the forward method
 
-    attention_v2 = SelfAttentionV2(input_dim=batch_embeddings.shape[1], output_dim=2)
+    attention_v2 = SelfAttentionV2(embedding_dim=embedding_dim, output_dim=2)
     print(Fore.GREEN + "SelfAttentionV2:" + Fore.RESET)
     print(attention_v2(batch_embeddings))
 
@@ -306,6 +358,60 @@ def attention():
     transfer_weights(from_model=attention_v2, to_model=attention_v1)
     print(Fore.YELLOW + "disguised SelfAttentionV2:" + Fore.RESET)
     print(attention_v1(batch_embeddings))
+
+
+@app.command()
+def attention_masked_for_one():
+    batch_size = 8
+    seq_length = 1
+    embedding_dim = 3
+    encoder, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=batch_size,
+        stride=1,
+        seq_length=seq_length,
+    )
+    data_iter = iter(data_loader)
+    batch_tokens, _ = next(data_iter)
+
+    batch_embeddings = build_embeddings(
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=embedding_dim, seq_length=seq_length
+    )
+
+    queries, keys, _ = build_qkv_matrices(batch_embeddings, input_dim=embedding_dim, output_dim=2)
+    query_2 = queries[1]
+
+    keys_reshaped = keys.view(-1, keys.shape[-1])  # shape [8, 2]
+
+    # Now compute the dot product of query_2 with all keys
+    # query_2 shape [1, 2], keys_reshaped shape [8, 2]
+    attention_scores = query_2 @ keys_reshaped.T  # shape [1, 8]
+
+    # build a triangular matrix with 0s above the diagonal
+    mask = torch.triu(torch.ones(batch_size, batch_size), diagonal=1)
+    masked = attention_scores.masked_fill(mask.bool(), -torch.inf)
+    attention_weights = torch.softmax(masked / keys.shape[-1] ** 0.5, dim=1)
+
+    # use an extra dropout layer
+    dropout = torch.nn.Dropout(0.2)
+    attention_weights = dropout(attention_weights)
+    print(Fore.GREEN + "Masked attention for one element:" + Fore.RESET)
+    print_attention_matrix(attention_weights)
+
+
+@app.command()
+def attention_masked_for_batch():
+    content = load_text_file(Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"))
+    encoder = tiktoken.get_encoding("gpt2")
+    data_loader = create_dataloader_v1(
+        text=content, encoder=encoder, batch_size=2, stride=6, seq_length=6, shuffle=False
+    )
+
+    data_iter = iter(data_loader)
+    batch_tokens, _ = next(data_iter)
+    build_embeddings(tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=3, seq_length=6).squeeze(1)
+
+    # to be continued ...
 
 
 if __name__ == "__main__":
