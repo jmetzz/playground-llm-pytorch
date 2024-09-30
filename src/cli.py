@@ -140,7 +140,7 @@ def embedding(
 
 
 @app.command()
-def qkv_matrices():
+def qkv():
     the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
     # with default parameters for illustration purposes:
     #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
