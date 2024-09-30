@@ -26,3 +26,24 @@ def build_embeddings(inputs: torch.Tensor, vocab_size: int, output_dim: int, con
         },
     )
     return input_embeddings
+
+
+def build_qkv_matrices(
+    input_embeddings: torch.Tensor, input_dim: int, output_dim: int, seed: int = 123
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    torch.manual_seed(seed)
+
+    w_query = torch.nn.Parameter(torch.rand(input_dim, output_dim), requires_grad=True)
+    w_key = torch.nn.Parameter(torch.rand(input_dim, output_dim), requires_grad=True)
+    w_value = torch.nn.Parameter(torch.rand(input_dim, output_dim), requires_grad=True)
+
+    queries = input_embeddings @ w_query
+    keys = input_embeddings @ w_key
+    values = input_embeddings @ w_value
+
+    LOGGER.debug(
+        "QKV matrices built.",
+        extra={"queries_shape": queries.shape, "keys_shape": keys.shape, "values_shape": values.shape},
+    )
+
+    return queries, keys, values
