@@ -154,6 +154,7 @@ def qkv_matrices():
     input_embeddings = build_embeddings(
         inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
     )
+
     print(
         f"Inputs embeddings shape: {input_embeddings.shape}"
     )  # [8, 1, 3] (batch_size=8, context_length=1, output_dim=3)
@@ -168,18 +169,18 @@ def qkv_matrices():
     queries, keys, values = build_qkv_matrices(input_embeddings, input_dim=input_embeddings.shape[2], output_dim=2)
 
     print("\n" + Fore.CYAN + "Projections:" + Fore.RESET)
-    print(f"queries shape: {queries.shape}")  # Shape [8, 1, 2]
-    print(f"queries: \n{queries}")
+    print(Fore.GREEN + f"queries shape: {queries.shape}" + Fore.RESET)  # Shape [8, 1, 2]
+    print(f"queries: {queries}")
 
-    print(f"keys shape: {keys.shape}")  # Shape [8, 1, 2]
-    print(f"keys: \n{keys}")
+    print(Fore.GREEN + f"keys shape: {keys.shape}" + Fore.RESET)  # Shape [8, 1, 2]
+    print(f"keys: {keys}")
 
-    print(f"values shape: {values.shape}")  # Shape [8, 1, 2]
-    print(f"values: \n{values}")
+    print(Fore.GREEN + f"values shape: {values.shape}" + Fore.RESET)  # Shape [8, 1, 2]
+    print(f"values: {values}")
 
 
 @app.command()
-def attention():
+def attention():  # noqa: PLR0914
     the_verdict_file = Path(__file__).parent.parent.joinpath("resources/the-verdict.txt")
     # with default parameters for illustration purposes:
     #     a batch of 8 x 1D sample (batch_size=8, stride=1, max_length=1)
@@ -187,43 +188,79 @@ def attention():
     input_tokens, _ = next(data_iter)
     input_embeddings = build_embeddings(
         inputs=input_tokens, vocab_size=encoder.max_token_value, output_dim=3, context_length=1
-    )
+    ).squeeze(1)
 
-    queries, keys, values = build_qkv_matrices(input_embeddings, input_dim=input_embeddings.shape[2], output_dim=2)
+    queries, keys, values = build_qkv_matrices(input_embeddings, input_dim=input_embeddings.shape[1], output_dim=2)
+
+    query_2 = queries[1]
+    key_2 = keys[1]
 
     print(Fore.CYAN + ">>> Get the second input element (input_2)" + Fore.RESET)
-    print(f"\nquery_2 shape: {queries[1].shape}")  # Shape [1, 2]
-    print(f"query_2: {queries[1]}")
-    print(f"key_2: {keys[1]}")
-    print(f"value_2: {values[1]}\n")
+    print(f"\nquery_2 shape: {query_2.shape}")  # Shape [2]
+    print(f"query_2: {query_2}")
+    print(f"key_2: {key_2}")
 
-    print(Fore.CYAN + ">>> Compute the attention score wrt query_2" + Fore.RESET)
-    # need to flatten the tensors since dot product only works on 1D tensors.
-    attn_score_22 = torch.dot(queries[1].flatten(), keys[1].flatten())
-    print(f"unnormalized attn_score_22: {attn_score_22:.4f}")
+    print(Fore.CYAN + ">>> Compute the attention score for key_2 wrt query_2" + Fore.RESET)
+    # Dot product between query_2 and key_2.
+    attn_score_22 = torch.dot(query_2, key_2)
+    print(f"unscaled attn_score_22: {attn_score_22:.4f}")
 
-    print(Fore.CYAN + "\n>>> Calculate the context vector:" + Fore.RESET)
-    print(f"\nquery_2 shape: {queries[1].shape}")  # Shape [1, 2]
-    print(f"keys transposed shape: {keys.permute(0, 2, 1).shape}")  # Shape [8, 2, 1]
-    attention_scores_2 = queries[1] @ keys.permute(0, 2, 1)  # Align the matrices dimensions
-    attention_scores_2 = attention_scores_2.squeeze(-1).squeeze(-1)
-    print(f"unnormalized attention scores: \n{attention_scores_2}")
-
-    # sanity check
-    print(Fore.RED + "Sanity check:" + Fore.RESET)
+    print(Fore.CYAN + "\n>>> Compute the attention scores for all keys wrt query_2:" + Fore.RESET)
+    print(Style.DIM + "Unscaled attention scores..." + Style.NORMAL)
     print(
         Style.DIM
         + "The unscaled attention score is computed as a dot product between the query and the keys vectors."
         + Style.NORMAL
     )
-    print(f"{attn_score_22:.5f} == {attention_scores_2[1].item():.5f}")
+    print(f"keys shape: {keys.shape}")
+    # Align the matrices for query_2 and keys
+    attention_scores_2 = query_2 @ keys.permute(1, 0)
+    # print(f"attention_scores_2 shape after @ operation: {attention_scores_2.shape}")
+    # print("Squeezing it ...")
+    # attention_scores_2 = attention_scores_2.squeeze(-1)
+    print(
+        f"attention_scores_2 shape: {attention_scores_2.shape}"
+    )  # [8] representing the attention distribution over the 8 elements in the batch.
+    print(f"attention_scores_2: \n {attention_scores_2}")
 
-    print(Fore.CYAN + "\n>>> Scaling the attention weights" + Fore.RESET)
-    scaling_factor = keys.shape[-1] ** 0.5  # mathematically equivalent to the square root
+    # sanity check
+    print(
+        Style.DIM
+        + Fore.RED
+        + f"\t[Sanity check] {attn_score_22:.5f} == {attention_scores_2[1].item():.5f}"
+        + Fore.RESET
+        + Style.NORMAL
+    )
+    print()
+
+    print(Fore.CYAN + "\n>>> Compute the attention weights" + Fore.RESET)
+
+    print(Style.DIM + "Scaling the attention weights..." + Style.NORMAL)
+    scaling_factor = keys.shape[-1] ** 0.5  # Mathematically equivalent to the square root
     attention_weights_2 = torch.softmax(attention_scores_2 / scaling_factor, dim=-1)
+    print(f"attention_weights_2 shape: {attention_weights_2.shape}")
+    print(f"attention_weights_2 : \n {attention_weights_2}")
 
-    print(f"Attention weights shape: {attention_weights_2.shape}")
-    print(f"Attention weights: {attention_weights_2}")
+    print()
+    print(Fore.CYAN + "\n>>> Compute the context vector" + Fore.RESET)
+    # In the attention mechanism, the idea is to weight each value by
+    # its corresponding attention weight, then sum over the values to
+    # compute the context vector.
+    print(
+        f"Check values matrix shape: {values.shape}"
+        # [8, 1, 2] (for 8 elements, 1 context length, and 2 output dimensions),
+        # meaning there are 8 elements, each with a value vector of size 2.
+    )
+
+    # Firstly, reshape attention_weights_2 to enable proper broadcastingShape:
+    attention_weights_2 = attention_weights_2.unsqueeze(1)
+    print(f"attention_weights_2 reshaped: {attention_weights_2.shape}")  # new shape [8, 1]
+
+    context_vectors = torch.sum(attention_weights_2 * values, dim=0)
+
+    print()
+    print(f"Context vector shape: {context_vectors.shape}")
+    print(Fore.GREEN + f"Context vector: {context_vectors}" + Fore.RESET)
 
 
 if __name__ == "__main__":
