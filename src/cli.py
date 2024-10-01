@@ -157,7 +157,7 @@ def embed(
     print(f"{batch_tokens}")
 
     batch_embeddings = build_embeddings(
-        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=output_dim, seq_length=seq_length
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embedding_dim=output_dim, seq_length=seq_length
     )
     print(Fore.CYAN + "Embeddings shape:")
     print(batch_embeddings.shape)  # [8, 4, output_dim]
@@ -224,7 +224,7 @@ def attention_for_one(qkv_dim: int = 2):  # noqa: PLR0914
     batch_tokens, _ = next(data_iter)
 
     batch_embeddings = build_embeddings(
-        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=3, seq_length=seq_length
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embedding_dim=3, seq_length=seq_length
     )
 
     print(Fore.CYAN + "Batch tokens shape:")
@@ -233,7 +233,7 @@ def attention_for_one(qkv_dim: int = 2):  # noqa: PLR0914
     print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
 
     queries, keys, values = build_qkv_matrices(
-        batch_embeddings, input_dim=batch_embeddings.shape[2], output_dim=qkv_dim
+        batch_embeddings, embedding_dim=batch_embeddings.shape[2], qkv_dim=qkv_dim
     )
 
     print()
@@ -305,32 +305,30 @@ def attention_for_one(qkv_dim: int = 2):  # noqa: PLR0914
 
 
 @app.command()
-def attention_simple():
-    seq_length = 4
-    embedding_dim = 3
+def attention_simple(batch_size: int = 2, stride: int = 1, seq_length: int = 1, embedding_dim: int = 3):
     encoder, data_loader = get_encoder_and_batch_iterator(
         Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
-        batch_size=8,
-        stride=4,
+        batch_size=batch_size,
+        stride=stride,
         seq_length=seq_length,
     )
     data_iter = iter(data_loader)
     batch_tokens, _ = next(data_iter)
 
     batch_embeddings = build_embeddings(
-        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=embedding_dim, seq_length=seq_length
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embedding_dim=embedding_dim, seq_length=seq_length
     )
 
     print(Fore.CYAN + "Batch tokens shape:")
     print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
     print(Fore.CYAN + "Embeddings shape:")
     print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
-    attention_v1 = SelfAttentionV1(embedding_dim=embedding_dim, context_length=2)
+    attention_v1 = SelfAttentionV1(embedding_dim=embedding_dim, context_length=seq_length)
     print(Fore.CYAN + "SelfAttentionV1:" + Fore.RESET)
 
     print(attention_v1(batch_embeddings))  # implicitly call the forward method
 
-    attention_v2 = SelfAttentionV2(embedding_dim=embedding_dim, context_length=2)
+    attention_v2 = SelfAttentionV2(embedding_dim=embedding_dim, context_length=seq_length)
     print(Fore.GREEN + "SelfAttentionV2:" + Fore.RESET)
     print(attention_v2(batch_embeddings))
 
@@ -369,9 +367,9 @@ def attention_masked(dropout: float | None = 0.2, for_item: int | None = None): 
     batch_tokens, _ = next(data_iter)
 
     batch_embeddings = build_embeddings(
-        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=embedding_dim, seq_length=seq_length
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embedding_dim=embedding_dim, seq_length=seq_length
     )
-    queries, keys, _ = build_qkv_matrices(batch_embeddings, input_dim=embedding_dim, output_dim=2)
+    queries, keys, values = build_qkv_matrices(batch_embeddings, embedding_dim=embedding_dim, qkv_dim=2)
 
     if for_item:
         # Compute the dot product of query_item with all keys
@@ -385,7 +383,7 @@ def attention_masked(dropout: float | None = 0.2, for_item: int | None = None): 
     else:  # for batch
         # Compute attention scores for all elements in the batch
         # via batch matrix-matrix product of matrices queries and keys.
-        # - queries shape: [batch_size, seq_length, output_dim], keys shape: [batch_size, seq_length, output_dim]
+        # - queries shape: [batch_size, seq_length, qkv_output_dim], keys shape: [batch_size, seq_length, qkv_output_dim]
         # - for each query, compute a dot product with every key, resulting in an attention score matrix
         #   of size seq_length x seq_length for each batch element.
         attention_scores = torch.bmm(queries, keys.transpose(-2, -1))  # shape: [batch_size, seq_length, seq_length]
