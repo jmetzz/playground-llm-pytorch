@@ -11,7 +11,7 @@ def load_text_file(file_path: Path) -> str:
         return f.read()
 
 
-def get_encoder_and_batch_iterator(
+def get_encoder_and_batch_iterator(  # noqa: PLR0913,PLR0917
     file_path: Path,
     encoding: str = "gpt2",
     batch_size: int = 8,
