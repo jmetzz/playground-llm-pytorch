@@ -7,11 +7,11 @@ import torch
 LOGGER = logging.getLogger()
 
 
-def build_embeddings(tokens: torch.Tensor, vocab_size: int, embed_dim: int, seq_length: int) -> torch.Tensor:
-    token_embedding_layer = torch.nn.Embedding(vocab_size, embed_dim)
+def build_embeddings(tokens: torch.Tensor, vocab_size: int, embeddings_dim: int, seq_length: int) -> torch.Tensor:
+    token_embedding_layer = torch.nn.Embedding(vocab_size, embeddings_dim)
     token_embeddings = token_embedding_layer(tokens)
 
-    positional_embedding_layer = torch.nn.Embedding(seq_length, embed_dim)
+    positional_embedding_layer = torch.nn.Embedding(seq_length, embeddings_dim)
     # torch.arange(...) - placeholder vector which contains a sequence
     # of numbers 0, 1, ..., up to the maximum input `length - 1`
     positional_embeddings = positional_embedding_layer(torch.arange(seq_length))
@@ -29,13 +29,13 @@ def build_embeddings(tokens: torch.Tensor, vocab_size: int, embed_dim: int, seq_
 
 
 def build_qkv_matrices(
-    input_embeddings: torch.Tensor, input_dim: int, output_dim: int, seed: int = 123
+    input_embeddings: torch.Tensor, embeddings_dim: int, qkv_dim: int, seed: int = 123
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     torch.manual_seed(seed)
 
-    w_query = torch.nn.Parameter(torch.rand(input_dim, output_dim), requires_grad=True)
-    w_key = torch.nn.Parameter(torch.rand(input_dim, output_dim), requires_grad=True)
-    w_value = torch.nn.Parameter(torch.rand(input_dim, output_dim), requires_grad=True)
+    w_query = torch.nn.Parameter(torch.rand(embeddings_dim, qkv_dim), requires_grad=True)
+    w_key = torch.nn.Parameter(torch.rand(embeddings_dim, qkv_dim), requires_grad=True)
+    w_value = torch.nn.Parameter(torch.rand(embeddings_dim, qkv_dim), requires_grad=True)
 
     queries = input_embeddings @ w_query
     keys = input_embeddings @ w_key
@@ -50,12 +50,12 @@ def build_qkv_matrices(
 
 
 class SelfAttentionV1(torch.nn.Module):
-    def __init__(self, embedding_dim: int, context_length: int, seed: int = 123) -> None:
+    def __init__(self, embeddings_dim: int, context_length: int, seed: int = 123) -> None:
         super().__init__()
         torch.manual_seed(seed)
-        self._w_query = torch.nn.Parameter(torch.rand(embedding_dim, context_length))
-        self._w_key = torch.nn.Parameter(torch.rand(embedding_dim, context_length))
-        self._w_value = torch.nn.Parameter(torch.rand(embedding_dim, context_length))
+        self._w_query = torch.nn.Parameter(torch.rand(embeddings_dim, context_length))
+        self._w_key = torch.nn.Parameter(torch.rand(embeddings_dim, context_length))
+        self._w_value = torch.nn.Parameter(torch.rand(embeddings_dim, context_length))
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
         # embeddings shape: (batch_size, seq_length, embedding_dim)
@@ -73,12 +73,15 @@ class SelfAttentionV1(torch.nn.Module):
 
 
 class SelfAttentionV2(torch.nn.Module):
-    def __init__(self, embedding_dim: int, context_length: int, qkv_bias: bool = False, seed: int = 123) -> None:
+    def __init__(
+        self, embeddings_dim: int, context_length: int, *, qkv_bias: bool = False, seed: int | None = None
+    ) -> None:
         super().__init__()
-        torch.manual_seed(seed)
-        self._w_query = torch.nn.Linear(embedding_dim, context_length, bias=qkv_bias)
-        self._w_key = torch.nn.Linear(embedding_dim, context_length, bias=qkv_bias)
-        self._w_value = torch.nn.Linear(embedding_dim, context_length, bias=qkv_bias)
+        if seed:
+            torch.manual_seed(seed)
+        self._w_query = torch.nn.Linear(embeddings_dim, context_length, bias=qkv_bias)
+        self._w_key = torch.nn.Linear(embeddings_dim, context_length, bias=qkv_bias)
+        self._w_value = torch.nn.Linear(embeddings_dim, context_length, bias=qkv_bias)
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
         # embeddings shape: (batch_size, seq_length, embedding_dim)
