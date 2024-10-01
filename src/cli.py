@@ -400,7 +400,7 @@ def attention_masked(  # noqa: PLR0913, PLR0914, PLR0917
     mask = torch.triu(torch.ones(batch_size, batch_size), diagonal=1)
     masked_attention_scores = attention_scores.masked_fill(mask.bool(), -torch.inf)
     # Apply softmax to normalized scores
-    attention_weights = torch.softmax(masked_attention_scores / keys.shape[-1] ** 0.5, dim=1)
+    attention_weights = torch.softmax(masked_attention_scores / keys.shape[-1] ** 0.5, dim=-1)
 
     # use an extra dropout layer
     if dropout:
