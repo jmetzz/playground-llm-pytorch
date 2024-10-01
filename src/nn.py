@@ -96,3 +96,57 @@ class SelfAttentionV2(torch.nn.Module):
 
         attention_weights = torch.softmax(attention_scores / keys.shape[-1] ** 0.5, dim=-1)
         return attention_weights @ values  # context vectors
+
+
+class CausalAttention(torch.nn.Module):
+    def __init__(
+        self, embedding_dim: int, output_dim: int, dropout: float, *, qkv_bias: bool = False, seed: int = 123
+    ) -> None:
+        super().__init__()
+        if seed:
+            torch.manual_seed(seed)
+
+        self._output_dim = output_dim
+
+        self._w_query = torch.nn.Linear(embedding_dim, output_dim, bias=qkv_bias)
+        self._w_key = torch.nn.Linear(embedding_dim, output_dim, bias=qkv_bias)
+        self._w_value = torch.nn.Linear(embedding_dim, output_dim, bias=qkv_bias)
+        self._dropout = torch.nn.Dropout(dropout)
+
+        # #TODO: For better performance, the mask could be buffered here.
+        #   Something like `self.register_buffer("mask", torch.triu(torch.ones(output_dim, output_dim), diagonal=1))`
+        #   Buffers are automatically moved to the appropriate device (CPU or GPU) in runtime.
+
+    def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+        keys = self._w_key(embeddings)
+        queries = self._w_query(embeddings)
+        values = self._w_value(embeddings)
+
+        attention_scores = torch.bmm(queries, keys.transpose(-2, -1))
+
+        # Apply mask to prevent attending to future positions
+        _, num_tokens, _ = embeddings.shape
+        mask = torch.triu(torch.ones(num_tokens, num_tokens), diagonal=1).bool()
+
+        # In-place masking of future positions in the attention scores
+        attention_scores.masked_fill_(mask.bool(), -torch.inf)
+
+        # Apply softmax to normalized scores
+        scaling_factor = keys.shape[-1] ** 0.5  # scale by sqrt(qkv_dim)
+        attention_weights = torch.softmax(attention_scores / scaling_factor, dim=-1)
+
+        # Apply dropout to attention weights
+        attention_weights = self._dropout(attention_weights)
+
+        # Compute the context vectors (weighted sum of values)
+        context_vectors = attention_weights @ values
+
+        LOGGER.debug(
+            "Forward pass.",
+            extra={
+                "attention_scores": attention_scores.shape,  # [batch_size, num_tokens, num_tokens]
+                "attention_weights": attention_weights.shape,  # [batch_size, num_tokens, num_tokens]
+                "context_vectors": context_vectors.shape,  # [batch_size, num_tokens, qkv_dim]
+            },
+        )
+        return context_vectors

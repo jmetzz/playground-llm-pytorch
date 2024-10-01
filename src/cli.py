@@ -10,7 +10,7 @@ import torch
 import typer
 from colorama import Fore, Style
 
-from nn import SelfAttentionV1, SelfAttentionV2, build_embeddings, build_qkv_matrices
+from nn import CausalAttention, SelfAttentionV1, SelfAttentionV2, build_embeddings, build_qkv_matrices
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
 from utils.data import get_encoder_and_batch_iterator, load_text_file
@@ -439,6 +439,31 @@ def attention_masked(  # noqa: PLR0913, PLR0914, PLR0917
 
         print(Fore.GREEN + "Context vector:")
         print(context_vectors)
+
+
+@app.command()
+def attention_causal(
+    batch_size: int = 8, stride: int = 4, seq_length: int = 4, embeddings_dim: int = 3, qkv_dim: int = 2
+):
+    encoder, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=batch_size,
+        stride=stride,
+        seq_length=seq_length,
+    )
+    data_iter = iter(data_loader)
+    batch_tokens, _ = next(data_iter)
+
+    batch_embeddings = build_embeddings(
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embeddings_dim=embeddings_dim, seq_length=seq_length
+    )
+
+    causal_attention = CausalAttention(embedding_dim=embeddings_dim, output_dim=qkv_dim, dropout=0.0)
+    context_vectors = causal_attention(batch_embeddings)
+
+    print(f"{Fore.CYAN}batch_embeddings{Fore.RESET}: {batch_embeddings.shape}")  # [batch_size, seq_length, output_dim]
+    print(f"{Fore.CYAN}batch_tokens{Fore.RESET}: {batch_tokens.shape}")  # [batch_size, seq_length]
+    print(f"{Fore.CYAN}context_vectors{Fore.RESET}: {context_vectors.shape}")
 
 
 if __name__ == "__main__":
