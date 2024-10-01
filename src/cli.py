@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Annotated
 
 import colorama
-import tiktoken
 import torch
 import typer
 from colorama import Fore, Style
@@ -14,7 +13,7 @@ from colorama import Fore, Style
 from nn import SelfAttentionV1, SelfAttentionV2, build_embeddings, build_qkv_matrices
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
-from utils.data import create_dataloader_v1, get_encoder_and_batch_iterator, load_text_file
+from utils.data import get_encoder_and_batch_iterator, load_text_file
 from utils.io import print_attention_matrix
 
 colorama.init(autoreset=True)
@@ -361,7 +360,7 @@ def attention():
 
 
 @app.command()
-def attention_masked_for_one():
+def attention_masked(dropout: float | None = 0.2, for_item: int | None = None):  # noqa: PLR0914
     batch_size = 8
     seq_length = 1
     embedding_dim = 3
@@ -377,41 +376,51 @@ def attention_masked_for_one():
     batch_embeddings = build_embeddings(
         tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=embedding_dim, seq_length=seq_length
     )
-
     queries, keys, _ = build_qkv_matrices(batch_embeddings, input_dim=embedding_dim, output_dim=2)
-    query_2 = queries[1]
 
-    keys_reshaped = keys.view(-1, keys.shape[-1])  # shape [8, 2]
+    if for_item:
+        # Compute the dot product of query_item with all keys
+        # query_item shape [1, qvk_output_dim], keys_reshaped shape [batch_size, qkv_output_dim]
+        query_item = queries[for_item]
+        keys_reshaped = keys.view(-1, keys.shape[-1])  # shape [batch_size, qkv_output_dim]
 
-    # Now compute the dot product of query_2 with all keys
-    # query_2 shape [1, 2], keys_reshaped shape [8, 2]
-    attention_scores = query_2 @ keys_reshaped.T  # shape [1, 8]
+        # Now compute the dot product of query_2 with all keys
+        # query_2 shape [1, qkv_output_dim], keys_reshaped shape [batch_size, qkv_output_dim]
+        attention_scores = query_item @ keys_reshaped.T  # shape [1, batch_size]
+    else:  # for batch
+        # Compute attention scores for all elements in the batch
+        # via batch matrix-matrix product of matrices queries and keys.
+        # - queries shape: [batch_size, seq_length, output_dim], keys shape: [batch_size, seq_length, output_dim]
+        # - for each query, compute a dot product with every key, resulting in an attention score matrix
+        #   of size seq_length x seq_length for each batch element.
+        attention_scores = torch.bmm(queries, keys.transpose(-2, -1))  # shape: [batch_size, seq_length, seq_length]
 
-    # build a triangular matrix with 0s above the diagonal
+    # Apply mask (triangular matrix to mask future positions)
+    # A mask is used to prevent attention to future positions in the sequence
+    # (i.e., positions that are to the right of the current position)
     mask = torch.triu(torch.ones(batch_size, batch_size), diagonal=1)
-    masked = attention_scores.masked_fill(mask.bool(), -torch.inf)
-    attention_weights = torch.softmax(masked / keys.shape[-1] ** 0.5, dim=1)
+    masked_attention_scores = attention_scores.masked_fill(mask.bool(), -torch.inf)
+    # Apply softmax to normalized scores
+    attention_weights = torch.softmax(masked_attention_scores / keys.shape[-1] ** 0.5, dim=1)
 
     # use an extra dropout layer
-    dropout = torch.nn.Dropout(0.2)
-    attention_weights = dropout(attention_weights)
+    if dropout:
+        attention_weights = torch.nn.Dropout(dropout)(attention_weights)
+
+    print(Fore.CYAN + "attention_scores shape:")
+    print(f"{attention_scores.shape}")  # [batch_size, seq_length, seq_length]
+    print(Fore.CYAN + "masked_attention_scores shape:")
+    print(f"{masked_attention_scores.shape}")  # [batch_size, seq_length, seq_length]
+    print(Fore.CYAN + "attention_weights shape:")
+    print(f"{attention_weights.shape}")  # [batch_size, seq_length, seq_length]
     print(Fore.GREEN + "Masked attention for one element:" + Fore.RESET)
-    print_attention_matrix(attention_weights)
 
-
-@app.command()
-def attention_masked_for_batch():
-    content = load_text_file(Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"))
-    encoder = tiktoken.get_encoding("gpt2")
-    data_loader = create_dataloader_v1(
-        text=content, encoder=encoder, batch_size=2, stride=6, seq_length=6, shuffle=False
-    )
-
-    data_iter = iter(data_loader)
-    batch_tokens, _ = next(data_iter)
-    build_embeddings(tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=3, seq_length=6).squeeze(1)
-
-    # to be continued ...
+    if for_item:
+        print_attention_matrix(attention_weights)
+    else:
+        for idx in range(attention_weights.shape[0]):
+            print_attention_matrix(attention_weights[idx])
+            print()
 
 
 if __name__ == "__main__":
