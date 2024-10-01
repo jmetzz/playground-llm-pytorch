@@ -50,12 +50,12 @@ def build_qkv_matrices(
 
 
 class SelfAttentionV1(torch.nn.Module):
-    def __init__(self, embedding_dim: int, output_dim: int, seed: int = 123) -> None:
+    def __init__(self, embedding_dim: int, context_length: int, seed: int = 123) -> None:
         super().__init__()
         torch.manual_seed(seed)
-        self._w_query = torch.nn.Parameter(torch.rand(embedding_dim, output_dim))
-        self._w_key = torch.nn.Parameter(torch.rand(embedding_dim, output_dim))
-        self._w_value = torch.nn.Parameter(torch.rand(embedding_dim, output_dim))
+        self._w_query = torch.nn.Parameter(torch.rand(embedding_dim, context_length))
+        self._w_key = torch.nn.Parameter(torch.rand(embedding_dim, context_length))
+        self._w_value = torch.nn.Parameter(torch.rand(embedding_dim, context_length))
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
         # embeddings shape: (batch_size, seq_length, embedding_dim)
@@ -73,12 +73,12 @@ class SelfAttentionV1(torch.nn.Module):
 
 
 class SelfAttentionV2(torch.nn.Module):
-    def __init__(self, embedding_dim: int, output_dim: int, qkv_bias: bool = False, seed: int = 123) -> None:
+    def __init__(self, embedding_dim: int, context_length: int, qkv_bias: bool = False, seed: int = 123) -> None:
         super().__init__()
         torch.manual_seed(seed)
-        self._w_query = torch.nn.Linear(embedding_dim, output_dim, bias=qkv_bias)
-        self._w_key = torch.nn.Linear(embedding_dim, output_dim, bias=qkv_bias)
-        self._w_value = torch.nn.Linear(embedding_dim, output_dim, bias=qkv_bias)
+        self._w_query = torch.nn.Linear(embedding_dim, context_length, bias=qkv_bias)
+        self._w_key = torch.nn.Linear(embedding_dim, context_length, bias=qkv_bias)
+        self._w_value = torch.nn.Linear(embedding_dim, context_length, bias=qkv_bias)
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
         # embeddings shape: (batch_size, seq_length, embedding_dim)
