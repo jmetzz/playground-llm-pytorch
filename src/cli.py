@@ -263,15 +263,15 @@ def attention_for_one(  # noqa: PLR0914
     # Align the matrices for query_2 and keys
     # query_2 shape is [seq_length, qkv_dim]
     # keys shape is [batch_size, seq_length, qkv_dim]
-    # Reshape keys to have the shape [8*4, 2] i.e., combine the batch and token dimension
-    keys_reshaped = keys.view(-1, keys.shape[-1])  # shape [32, 2]
+    # Reshape keys to have the shape [batch_size * seq_length, qkv_dim] i.e., combine the batch and token dimension
+    keys_reshaped = keys.view(-1, keys.shape[-1])  # shape [32, 2]; for batch_size=8, seq_length=4 and qkv_dim=2
 
     # Now compute the dot product of query_2 with all keys
-    # query_2 shape [4, 2], keys_reshaped shape [32, 2]
-    attention_scores_2 = query_2 @ keys_reshaped.T  # shape [4, 32]
+    # query_2 shape [seq_length, qkv_dim], keys_reshaped shape [batch_size * seq_length, qkv_dim]
+    attention_scores_2 = query_2 @ keys_reshaped.T  # shape [qkv_dim, batch_size * seq_length]
     print(
         f"attention_scores_2 shape: {attention_scores_2.shape}"
-    )  # [8] representing the attention distribution over the 8 elements in the batch.
+    )  # [batch_size] representing the attention distribution over the all elements in the batch.
     print(f"attention_scores_2: \n {attention_scores_2}")
 
     print()
@@ -291,13 +291,13 @@ def attention_for_one(  # noqa: PLR0914
     # compute the context vector.
     print(
         f"Check values matrix shape: {values.shape}"
-        # [8, 1, 2] (for 8 elements, 1 context length, and 2 output dimensions),
+        # [batch_size, seq_length, qkv_len] (for example: 8 elements, 1 context length, and 2 output dimensions),
         # meaning there are 8 elements, each with a value vector of size 2.
     )
 
-    values_reshaped = values.view(-1, values.shape[-1])  # shape [32, 2]
+    values_reshaped = values.view(-1, values.shape[-1])  # shape [batch_size * seq_length, qkv_dim]
     # Multiply attention weights with values and sum along the keys dimension
-    context_vectors = attention_weights_2 @ values_reshaped  # shape [4, 2]
+    context_vectors = attention_weights_2 @ values_reshaped  # shape [seq_length, qkv_dim]
 
     print(f"Context vector shape: {context_vectors.shape}")
     print(Fore.GREEN + f"Context vector: {context_vectors}" + Fore.RESET)
