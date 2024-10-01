@@ -97,11 +97,11 @@ def dataloader():
     data_iter = iter(data_loader)
     batch_tokens, batch_labels = next(data_iter)
 
-    print(Fore.CYAN + "Token IDs:")
+    print(f"{Fore.CYAN}Token IDs:")
     print(f"Batch inputs shape: {batch_tokens.shape}")  # [8, 1]
     print(f"{batch_tokens}")
 
-    print(Fore.YELLOW + "Label IDs:")
+    print("f{Fore.YELLOW}Label IDs:")
     print(f"{batch_labels}")
     print()
 
@@ -115,24 +115,25 @@ def codec():
         seq_length=4,
     )
     data_iter = iter(data_loader)
-    print(Fore.CYAN + ">>> Testing data loader with parameters:")
-    print(Fore.CYAN + "\t batch_size: 1")
-    print(Fore.CYAN + "\t stride: 1")
-    print(Fore.CYAN + "\t seq_length: 4")
+    print(f"{Fore.CYAN}>>> Testing data loader with parameters:")
+    print(f"{Fore.CYAN}\t batch_size: 1")
+    print(f"{Fore.CYAN}\t stride: 1")
+    print(f"{Fore.CYAN}\t seq_length: 4")
 
     for idx in range(2):
         batch_tokens, batch_labels = next(data_iter)
         batch_tokens = batch_tokens.squeeze()
         batch_labels = batch_labels.squeeze()
 
-        print(Fore.YELLOW + f">>> Batch #{idx}")
-        print(Fore.LIGHTCYAN_EX + "encoded tokens: " + Fore.RESET + f"{batch_tokens}")
-        print(Fore.LIGHTCYAN_EX + "encoded label: " + Fore.RESET + f"{batch_labels}")
+        print(f"{Fore.YELLOW}>>> Batch #{idx}")
+        print(f"{Fore.LIGHTCYAN_EX}encoded tokens{Fore.RESET}: {batch_tokens}")
+        print(f"{Fore.LIGHTCYAN_EX}encoded label{Fore.RESET}: {batch_labels}")
 
         output = [encoder.decode([element]) for element in batch_tokens]
-        print(Fore.BLUE + "decoded tokens: " + Fore.RESET + f"{output}")
+        print(f"{Fore.BLUE}decoded tokens{Fore.RESET}: {output}")
+
         output = [encoder.decode([element]) for element in batch_labels]
-        print(Fore.BLUE + "decoded label: " + Fore.RESET + f"{output}")
+        print(f"{Fore.BLUE}decoded label{Fore.RESET}: {output}")
 
 
 @app.command()
@@ -151,17 +152,17 @@ def embed(
     data_iter = iter(data_loader)
 
     batch_tokens, _ = next(data_iter)
-    print(Fore.CYAN + "Batch tokens shape:")
+    print(f"{Fore.CYAN}Batch tokens shape:")
     print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
-    print(Fore.CYAN + "Token IDs:")
+    print(f"{Fore.CYAN}Token IDs:")
     print(f"{batch_tokens}")
 
     batch_embeddings = build_embeddings(
         tokens=batch_tokens, vocab_size=encoder.max_token_value, embeddings_dim=output_dim, seq_length=seq_length
     )
-    print(Fore.CYAN + "Embeddings shape:")
+    print(f"{Fore.CYAN}Embeddings shape:")
     print(batch_embeddings.shape)  # [8, 4, output_dim]
-    print(Fore.CYAN + "Embeddings:")
+    print(f"{Fore.CYAN}Embeddings:")
     print(batch_embeddings)
 
 
@@ -185,26 +186,26 @@ def qkv(batch_size: int = 8, seq_length: int = 4, stride: int = 4, embeddings_di
         tokens=batch_tokens, vocab_size=encoder.max_token_value, embeddings_dim=embeddings_dim, seq_length=seq_length
     )
 
-    print(Fore.CYAN + "Batch tokens shape:")
+    print(f"{Fore.CYAN}Batch tokens shape:")
     print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
-    print(Fore.CYAN + "Embeddings shape:")
+    print(f"{Fore.CYAN}Embeddings shape:")
     print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
 
-    print(Fore.CYAN + ">>> Calculate the qkv vectors for the 2nd element in the batch" + Fore.RESET)
+    print(f"{Fore.CYAN}>>> Calculate the qkv vectors for the 2nd element in the batch")
     input_2 = batch_embeddings[1]
     print(f"x_2 shape: {input_2.shape}")  # [seq_length, output_dim]
 
-    print("\n" + Fore.CYAN + ">>> Calculate the full matrices for the batch:" + Fore.RESET)
+    print(f"{Fore.CYAN}\n>>> Calculate the full matrices for the batch:")
     queries, keys, values = build_qkv_matrices(batch_embeddings, embeddings_dim=embeddings_dim, qkv_dim=qkv_dim)
 
-    print("\n" + Fore.CYAN + "QKV projections:" + Fore.RESET)
-    print(Fore.GREEN + f"queries shape: {queries.shape}" + Fore.RESET)  # Shape [batch_size, seq_length, qkv_dim]
+    print(f"{Fore.CYAN}QKV projections:")
+    print(f"{Fore.GREEN}queries shape: {queries.shape}")  # Shape [batch_size, seq_length, qkv_dim]
     print(f"queries: {queries}")
 
-    print(Fore.GREEN + f"keys shape: {keys.shape}" + Fore.RESET)  # Shape [batch_size, seq_length, qkv_dim]
+    print(f"{Fore.GREEN}keys shape: {keys.shape}")  # Shape [batch_size, seq_length, qkv_dim]
     print(f"keys: {keys}")
 
-    print(Fore.GREEN + f"values shape: {values.shape}" + Fore.RESET)  # Shape [batch_size, seq_length, qkv_dim]
+    print(f"{Fore.GREEN}values shape: {values.shape}")  # Shape [batch_size, seq_length, qkv_dim]
     print(f"values: {values}")
 
 
@@ -315,17 +316,17 @@ def attention_simple(
         tokens=batch_tokens, vocab_size=encoder.max_token_value, embeddings_dim=embeddings_dim, seq_length=seq_length
     )
 
-    print(Fore.CYAN + "Batch tokens shape:")
+    print(f"{Fore.CYAN}Batch tokens shape:")
     print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
-    print(Fore.CYAN + "Embeddings shape:")
+    print(f"{Fore.CYAN}Embeddings shape:")
     print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
     attention_v1 = SelfAttentionV1(embeddings_dim=embeddings_dim, context_length=qkv_dim)
-    print(Fore.CYAN + "SelfAttentionV1:" + Fore.RESET)
+    print(f"{Fore.CYAN}SelfAttentionV1:")
 
     print(attention_v1(batch_embeddings))  # implicitly call the forward method
 
     attention_v2 = SelfAttentionV2(embeddings_dim=embeddings_dim, context_length=qkv_dim)
-    print(Fore.GREEN + "SelfAttentionV2:" + Fore.RESET)
+    print(f"{Fore.CYAN}SelfAttentionV2:")
     print(attention_v2(batch_embeddings))
 
     # Verify both are equivalent in working by transferring
@@ -344,7 +345,7 @@ def attention_simple(
         to_model._w_value.data = from_model._w_value.weight.data.T  # Transpose to match the shape  # noqa: SLF001
 
     _transfer_weights(from_model=attention_v2, to_model=attention_v1)
-    print(Fore.YELLOW + "disguised SelfAttentionV2:" + Fore.RESET)
+    print(f"{Fore.YELLOW}disguised SelfAttentionV2:")
     print(attention_v1(batch_embeddings))
 
 
