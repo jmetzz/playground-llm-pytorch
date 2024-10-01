@@ -308,17 +308,8 @@ def attention_for_one(qkv_dim: int = 2):  # noqa: PLR0914
     print(Fore.GREEN + f"Context vector: {context_vectors}" + Fore.RESET)
 
 
-def transfer_weights(from_model: SelfAttentionV2, to_model: SelfAttentionV1) -> None:
-    # Transfer query weights
-    to_model._w_query.data = from_model._w_query.weight.data.T  # Transpose to match the shape  # noqa: SLF001
-    # Transfer key weights
-    to_model._w_key.data = from_model._w_key.weight.data.T  # Transpose to match the shape  # noqa: SLF001
-    # Transfer value weights
-    to_model._w_value.data = from_model._w_value.weight.data.T  # Transpose to match the shape  # noqa: SLF001
-
-
 @app.command()
-def attention():
+def attention_simple():
     seq_length = 4
     embedding_dim = 3
     encoder, data_loader = get_encoder_and_batch_iterator(
@@ -354,7 +345,15 @@ def attention():
     # In SelfAttentionV2, the weights and biases are encapsulated within torch.nn.Linear layers.
     # To access the weights, we use .weight and for the bias (if used), .bias.
     # In SelfAttentionV1, the weights are raw torch.nn.Parameter objects.
-    transfer_weights(from_model=attention_v2, to_model=attention_v1)
+    def _transfer_weights(from_model: SelfAttentionV2, to_model: SelfAttentionV1) -> None:
+        # Transfer query weights
+        to_model._w_query.data = from_model._w_query.weight.data.T  # Transpose to match the shape  # noqa: SLF001
+        # Transfer key weights
+        to_model._w_key.data = from_model._w_key.weight.data.T  # Transpose to match the shape  # noqa: SLF001
+        # Transfer value weights
+        to_model._w_value.data = from_model._w_value.weight.data.T  # Transpose to match the shape  # noqa: SLF001
+
+    _transfer_weights(from_model=attention_v2, to_model=attention_v1)
     print(Fore.YELLOW + "disguised SelfAttentionV2:" + Fore.RESET)
     print(attention_v1(batch_embeddings))
 
