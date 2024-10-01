@@ -209,12 +209,15 @@ def qkv(batch_size: int = 8, seq_length: int = 4, stride: int = 4, embeddings_di
 
 
 @app.command()
-def attention_for_one(  # noqa: PLR0914
-    batch_size: int = 8, seq_length: int = 4, stride: int = 4, embeddings_dim: int = 3, qkv_dim: int = 2
+def attention_for_one_query(  # noqa: PLR0913, PLR0914
+    batch_size: int = 8,
+    seq_length: int = 4,
+    stride: int = 4,
+    embeddings_dim: int = 3,
+    qkv_dim: int = 2,
+    *,
+    verbose: bool = False,
 ):
-    # Using parameters (batch_size=8, stride=1, seq_length=1)
-    # for illustration purposes.
-
     encoder, data_loader = get_encoder_and_batch_iterator(
         Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
         batch_size=batch_size,
@@ -228,79 +231,71 @@ def attention_for_one(  # noqa: PLR0914
         tokens=batch_tokens, vocab_size=encoder.max_token_value, embeddings_dim=embeddings_dim, seq_length=seq_length
     )
 
-    print(Fore.CYAN + "Batch tokens shape:")
-    print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
-    print(Fore.CYAN + "Embeddings shape:")
-    print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
-
     queries, keys, values = build_qkv_matrices(batch_embeddings, embeddings_dim=embeddings_dim, qkv_dim=qkv_dim)
+    query_last_token, key_last = queries[-1], keys[-1]  # pick up the last element for illustration
 
-    print()
-    print(Fore.CYAN + ">>> Get the 2nd query and key elements" + Fore.RESET)
-    query_2, key_2 = queries[1], keys[1]  # pick up one element for illustration
-
-    print(f"query_2 shape: {query_2.shape}")  # Shape [seq_length, qkv_dim]
-    print(f"query_2: {query_2}")
-    print(f"key_2: {key_2}")
-
-    print(Fore.CYAN + ">>> Compute the attention score for key_2 wrt query_2" + Fore.RESET)
-    # Dot product query_2 and each element in key_2.
-    attn_score_2 = query_2 @ key_2.T  # [seq_length, seq_length]
-    print("unscaled attn_score_2:")
-    print(attn_score_2)
-    attn_score_22 = torch.dot(query_2[1], key_2[1])
-    print(Fore.RED + ">>> sanity test:")
-    print(Fore.LIGHTRED_EX + f"{attn_score_22.item():.4f} == {attn_score_2[1][1]:.4f}")
-
-    print(Fore.CYAN + "\n>>> Compute the attention scores for all keys wrt query_2:" + Fore.RESET)
-    print(Style.DIM + "Unscaled attention scores..." + Style.NORMAL)
-    print(
-        Style.DIM
-        + "The unscaled attention score is computed as a dot product between the query and the keys vectors."
-        + Style.NORMAL
-    )
-    print(f"keys shape: {keys.shape}")
-    # Align the matrices for query_2 and keys
-    # query_2 shape is [seq_length, qkv_dim]
+    # Align the matrices for query and keys
+    # query shape is [seq_length, qkv_dim]
     # keys shape is [batch_size, seq_length, qkv_dim]
-    # Reshape keys to have the shape [batch_size * seq_length, qkv_dim] i.e., combine the batch and token dimension
-    keys_reshaped = keys.view(-1, keys.shape[-1])  # shape [32, 2]; for batch_size=8, seq_length=4 and qkv_dim=2
+    # Reshape keys to have the shape [batch_size * seq_length, qk   v_dim] i.e., combine the batch and token dimension
+    keys_reshaped = keys.view(-1, keys.shape[-1])
 
-    # Now compute the dot product of query_2 with all keys
-    # query_2 shape [seq_length, qkv_dim], keys_reshaped shape [batch_size * seq_length, qkv_dim]
-    attention_scores_2 = query_2 @ keys_reshaped.T  # shape [qkv_dim, batch_size * seq_length]
-    print(
-        f"attention_scores_2 shape: {attention_scores_2.shape}"
-    )  # [batch_size] representing the attention distribution over the all elements in the batch.
-    print(f"attention_scores_2: \n {attention_scores_2}")
-
-    print()
-
-    print(Fore.CYAN + "\n>>> Compute the attention weights" + Fore.RESET)
-
-    print(Style.DIM + "Scaling the attention weights..." + Style.NORMAL)
+    # Now compute the dot product of query with all keys
+    # query shape [seq_length, qkv_dim], keys_reshaped shape [batch_size * seq_length, qkv_dim]
+    # attention scores tell you how much focus it should give to other tokens in the same sequence
+    attention_scores = query_last_token @ keys_reshaped.T
     scaling_factor = keys.shape[-1] ** 0.5  # Mathematically equivalent to the square root
-    attention_weights_2 = torch.softmax(attention_scores_2 / scaling_factor, dim=-1)
-    print(f"attention_weights_2 shape: {attention_weights_2.shape}")
-    print(f"attention_weights_2 : \n {attention_weights_2}")
+    attention_weights = torch.softmax(attention_scores / scaling_factor, dim=-1)
 
-    print()
-    print(Fore.CYAN + "\n>>> Compute the context vector" + Fore.RESET)
     # In the attention mechanism, the idea is to weight each value by
     # its corresponding attention weight, then sum over the values to
     # compute the context vector.
-    print(
-        f"Check values matrix shape: {values.shape}"
-        # [batch_size, seq_length, qkv_len] (for example: 8 elements, 1 context length, and 2 output dimensions),
-        # meaning there are 8 elements, each with a value vector of size 2.
-    )
-
     values_reshaped = values.view(-1, values.shape[-1])  # shape [batch_size * seq_length, qkv_dim]
     # Multiply attention weights with values and sum along the keys dimension
-    context_vectors = attention_weights_2 @ values_reshaped  # shape [seq_length, qkv_dim]
+    context_vectors = attention_weights @ values_reshaped  # shape [seq_length, qkv_dim]
 
-    print(f"Context vector shape: {context_vectors.shape}")
-    print(Fore.GREEN + f"Context vector: {context_vectors}" + Fore.RESET)
+    # --- Prepare and print the output information ---
+    print(f"{Fore.CYAN}batch_tokens{Fore.RESET}: {batch_tokens.shape}")  # [batch_size, seq_length]
+    print(f"{Fore.CYAN}batch_embeddings{Fore.RESET}: {batch_embeddings.shape}")  # [batch_size, seq_length, output_dim]
+    print(f"{Fore.CYAN}queries{Fore.RESET}: {queries.shape}")  # shape [batch_size, seq_length, qkv_dim]
+    print(f"{Fore.CYAN}keys{Fore.RESET}: {keys.shape}")  # shape [batch_size, seq_length, qkv_dim]
+    print(f"{Fore.CYAN}keys reshaped{Fore.RESET}: {keys_reshaped.shape}")
+    print(f"{Fore.CYAN}values{Fore.RESET} {values.shape}")
+
+    print(f"{Fore.CYAN}query{Fore.RESET}: {query_last_token.shape}")  # Shape [seq_length, qkv_dim]
+    print(f"{Fore.CYAN}attention_scores{Fore.RESET}: {attention_scores.shape}")  # [batch_size, seq_length, seq_length]
+    print(
+        f"{Fore.CYAN}attention_weights{Fore.RESET}: {attention_weights.shape}"
+    )  # [batch_size, seq_length, seq_length]
+    print(f"{Fore.CYAN}context_vectors{Fore.RESET}: {context_vectors.shape}")
+
+    if verbose:
+        print(f"{Fore.CYAN}\n>>> query and key elements")
+        print(f"query: {query_last_token}")
+        print(f"key: {key_last}")
+
+        print(Fore.CYAN + "\n>>> Computed the attention scores for all keys wrt query:")
+        print(
+            Style.DIM + "Unscaled attention score is computed as a dot product between the query and the keys vectors."
+        )
+        print(f"attention_scores: \n {attention_scores}")
+
+        print(f"{Fore.LIGHTRED_EX}\t ~~~ sanity test:")
+        attn_score_dot = query_last_token @ key_last.T  # [1, seq_length]
+        if seq_length > 1:
+            # choose second token if possible
+            attn_score_2 = torch.dot(query_last_token[1], key_last[1])
+            print(Fore.LIGHTRED_EX + f"\t {attn_score_2.item():.4f} == {attn_score_dot[1][1].item():.4f}")
+        else:
+            attn_score_2 = torch.dot(query_last_token.flatten(), key_last.flatten())
+            print(Fore.LIGHTRED_EX + f"\t {attn_score_2.item():.4f} == {attn_score_dot.flatten().item():.4f}")
+        print(f"{Fore.LIGHTRED_EX}\t unscaled attn_score{Fore.RESET}: {attn_score_dot}")
+
+        print(Fore.CYAN + "\n>>> Computed attention weights")
+        print_attention_matrix(attention_weights)
+
+        print(f"\n{Fore.CYAN}>>> Computed the context vector")
+        print(Fore.GREEN + f"Context vector: {context_vectors}")
 
 
 @app.command()
