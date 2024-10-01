@@ -352,12 +352,14 @@ def attention_simple(
 def attention_masked(  # noqa: PLR0913, PLR0914, PLR0917
     batch_size: int = 8,
     stride: int = 4,
+    seq_length: int = 4,
     embeddings_dim: int = 3,
     qkv_dim: int = 2,
     dropout: float | None = 0.2,
     for_item: int | None = None,
+    *,
+    verbose: bool = False,
 ):
-    seq_length: int = 1  # fixme: only works with 1 for now.
     encoder, data_loader = get_encoder_and_batch_iterator(
         Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
         batch_size=batch_size,
@@ -384,37 +386,58 @@ def attention_masked(  # noqa: PLR0913, PLR0914, PLR0917
     else:  # for batch
         # Compute attention scores for all elements in the batch
         # via batch matrix-matrix product of matrices queries and keys.
-        # - queries shape: [batch_size, seq_length, qkv_output_dim], keys shape: [batch_size, seq_length, qkv_output_dim]
-        # - for each query, compute a dot product with every key, resulting in an attention score matrix
-        #   of size seq_length x seq_length for each batch element.
+        # - queries shape: [batch_size, seq_length, qkv_output_dim],
+        #   keys shape: [batch_size, seq_length, qkv_output_dim]
+        # - for each query, compute a dot product with every key,
+        #   resulting in an attention score matrix of size
+        #   seq_length x seq_length for each batch element.
         attention_scores = torch.bmm(queries, keys.transpose(-2, -1))  # shape: [batch_size, seq_length, seq_length]
 
     # Apply mask (triangular matrix to mask future positions)
     # A mask is used to prevent attention to future positions in the sequence
     # (i.e., positions that are to the right of the current position)
-    mask = torch.triu(torch.ones(batch_size, batch_size), diagonal=1)
+    # ### mask = torch.triu(torch.ones(batch_size, batch_size), diagonal=1)
+    # In self-attention, you are masking positions within a sequence, not across different batches.
+    mask = torch.triu(torch.ones(seq_length, seq_length), diagonal=1)
+    # Then, you would need to broadcast the mask across the batch dimension:
+    mask.unsqueeze(0).expand(batch_size, -1, -1)
     masked_attention_scores = attention_scores.masked_fill(mask.bool(), -torch.inf)
+
     # Apply softmax to normalized scores
-    attention_weights = torch.softmax(masked_attention_scores / keys.shape[-1] ** 0.5, dim=-1)
+    scaling_factor = keys.shape[-1] ** 0.5  # Mathematically equivalent to the square root
+    attention_weights = torch.softmax(masked_attention_scores / scaling_factor, dim=-1)
 
     # use an extra dropout layer
     if dropout:
         attention_weights = torch.nn.Dropout(dropout)(attention_weights)
 
-    print(Fore.CYAN + "attention_scores shape:")
-    print(f"{attention_scores.shape}")  # [batch_size, seq_length, seq_length]
-    print(Fore.CYAN + "masked_attention_scores shape:")
-    print(f"{masked_attention_scores.shape}")  # [batch_size, seq_length, seq_length]
-    print(Fore.CYAN + "attention_weights shape:")
-    print(f"{attention_weights.shape}")  # [batch_size, seq_length, seq_length]
-    print(Fore.GREEN + "Masked attention for one element:" + Fore.RESET)
+    context_vectors = torch.bmm(attention_weights, values)  # shape [batch_size, seq_length, qkv_dim]
 
-    if for_item:
-        print_attention_matrix(attention_weights)
-    else:
-        for idx in range(attention_weights.shape[0]):
-            print_attention_matrix(attention_weights[idx])
-            print()
+    print(f"{Fore.CYAN}batch_tokens{Fore.RESET}: {batch_tokens.shape}")  # [batch_size, seq_length]
+    print(f"{Fore.CYAN}batch_embeddings{Fore.RESET}: {batch_embeddings.shape}")  # [batch_size, seq_length, output_dim]
+    print(f"{Fore.CYAN}queries{Fore.RESET}: {queries.shape}")  # shape [batch_size, seq_length, qkv_dim]
+    print(f"{Fore.CYAN}keys{Fore.RESET}: {keys.shape}")  # shape [batch_size, seq_length, qkv_dim]
+    print(f"{Fore.CYAN}values{Fore.RESET} {values.shape}")
+    print(f"{Fore.CYAN}attention_scores{Fore.RESET}: {attention_scores.shape}")  # [batch_size, seq_length, seq_length]
+    print(
+        f"{Fore.CYAN}masked_attention_scores{Fore.RESET}: {masked_attention_scores.shape}"
+    )  # [batch_size, seq_length, seq_length]
+    print(
+        f"{Fore.CYAN}attention_weights{Fore.RESET}: {attention_weights.shape}"
+    )  # [batch_size, seq_length, seq_length]
+    print(f"{Fore.CYAN}context_vectors{Fore.RESET}: {context_vectors.shape}")
+
+    if verbose:
+        print(f"{Fore.CYAN}Masked attention matrices:")
+        if for_item:
+            print_attention_matrix(attention_weights)
+        else:
+            for idx in range(attention_weights.shape[0]):
+                print_attention_matrix(attention_weights[idx])
+                print()
+
+        print(Fore.GREEN + "Context vector:")
+        print(context_vectors)
 
 
 if __name__ == "__main__":
