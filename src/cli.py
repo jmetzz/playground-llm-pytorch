@@ -338,12 +338,12 @@ def attention():
     print(f"{batch_tokens.shape}")  # [batch_size, seq_length]
     print(Fore.CYAN + "Embeddings shape:")
     print(batch_embeddings.shape)  # [batch_size, seq_length, output_dim]
-    attention_v1 = SelfAttentionV1(embedding_dim=embedding_dim, output_dim=2)
+    attention_v1 = SelfAttentionV1(embedding_dim=embedding_dim, context_length=2)
     print(Fore.CYAN + "SelfAttentionV1:" + Fore.RESET)
 
     print(attention_v1(batch_embeddings))  # implicitly call the forward method
 
-    attention_v2 = SelfAttentionV2(embedding_dim=embedding_dim, output_dim=2)
+    attention_v2 = SelfAttentionV2(embedding_dim=embedding_dim, context_length=2)
     print(Fore.GREEN + "SelfAttentionV2:" + Fore.RESET)
     print(attention_v2(batch_embeddings))
 
