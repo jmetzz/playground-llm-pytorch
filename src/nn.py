@@ -50,12 +50,12 @@ def build_qkv_matrices(
 
 
 class SelfAttentionV1(torch.nn.Module):
-    def __init__(self, embeddings_dim: int, context_length: int, seed: int = 123) -> None:
+    def __init__(self, embeddings_dim: int, output_dim: int, seed: int = 123) -> None:
         super().__init__()
         torch.manual_seed(seed)
-        self._w_query = torch.nn.Parameter(torch.rand(embeddings_dim, context_length))
-        self._w_key = torch.nn.Parameter(torch.rand(embeddings_dim, context_length))
-        self._w_value = torch.nn.Parameter(torch.rand(embeddings_dim, context_length))
+        self._w_query = torch.nn.Parameter(torch.rand(embeddings_dim, output_dim))
+        self._w_key = torch.nn.Parameter(torch.rand(embeddings_dim, output_dim))
+        self._w_value = torch.nn.Parameter(torch.rand(embeddings_dim, output_dim))
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
         # embeddings shape: (batch_size, seq_length, embedding_dim)
@@ -74,14 +74,14 @@ class SelfAttentionV1(torch.nn.Module):
 
 class SelfAttentionV2(torch.nn.Module):
     def __init__(
-        self, embeddings_dim: int, context_length: int, *, qkv_bias: bool = False, seed: int | None = None
+        self, embeddings_dim: int, output_dim: int, *, qkv_bias: bool = False, seed: int | None = None
     ) -> None:
         super().__init__()
         if seed:
             torch.manual_seed(seed)
-        self._w_query = torch.nn.Linear(embeddings_dim, context_length, bias=qkv_bias)
-        self._w_key = torch.nn.Linear(embeddings_dim, context_length, bias=qkv_bias)
-        self._w_value = torch.nn.Linear(embeddings_dim, context_length, bias=qkv_bias)
+        self._w_query = torch.nn.Linear(embeddings_dim, output_dim, bias=qkv_bias)
+        self._w_key = torch.nn.Linear(embeddings_dim, output_dim, bias=qkv_bias)
+        self._w_value = torch.nn.Linear(embeddings_dim, output_dim, bias=qkv_bias)
 
     def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
         # embeddings shape: (batch_size, seq_length, embedding_dim)
