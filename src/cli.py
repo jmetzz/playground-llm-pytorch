@@ -166,7 +166,7 @@ def embed(
 
 
 @app.command()
-def qkv(batch_size: int = 8, stride: int = 4, seq_length: int = 4, embeddings_dim: int = 3, qkv_dim: int = 2):
+def qkv(batch_size: int = 8, seq_length: int = 4, stride: int = 4, embeddings_dim: int = 3, qkv_dim: int = 2):
     # Using parameters (batch_size=8, stride=1, seq_length=1)
     # for illustration purposes.
     # This results batches of 8 sample, each sample comprised of 4 tokens (seq_length)
@@ -209,15 +209,16 @@ def qkv(batch_size: int = 8, stride: int = 4, seq_length: int = 4, embeddings_di
 
 
 @app.command()
-def attention_for_one(qkv_dim: int = 2):  # noqa: PLR0914
+def attention_for_one(  # noqa: PLR0914
+    batch_size: int = 8, seq_length: int = 4, stride: int = 4, embeddings_dim: int = 3, qkv_dim: int = 2
+):
     # Using parameters (batch_size=8, stride=1, seq_length=1)
     # for illustration purposes.
-    # This results batches of 8 sample, each sample comprised of 4 tokens (seq_length)
-    seq_length = 4
+
     encoder, data_loader = get_encoder_and_batch_iterator(
         Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
-        batch_size=8,
-        stride=4,
+        batch_size=batch_size,
+        stride=stride,
         seq_length=seq_length,
     )
     data_iter = iter(data_loader)
@@ -353,14 +354,19 @@ def attention_simple(
 
 
 @app.command()
-def attention_masked(dropout: float | None = 0.2, for_item: int | None = None):  # noqa: PLR0914
-    batch_size = 8
-    seq_length = 1
-    embedding_dim = 3
+def attention_masked(  # noqa: PLR0913, PLR0914, PLR0917
+    batch_size: int = 8,
+    stride: int = 4,
+    embeddings_dim: int = 3,
+    qkv_dim: int = 2,
+    dropout: float | None = 0.2,
+    for_item: int | None = None,
+):
+    seq_length: int = 1  # fixme: only works with 1 for now.
     encoder, data_loader = get_encoder_and_batch_iterator(
         Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
         batch_size=batch_size,
-        stride=1,
+        stride=stride,
         seq_length=seq_length,
     )
     data_iter = iter(data_loader)
