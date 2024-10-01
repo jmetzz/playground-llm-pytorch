@@ -166,16 +166,15 @@ def embed(
 
 
 @app.command()
-def qkv(embeddings_dim: int = 3, qkv_dim: int = 2):
+def qkv(batch_size: int = 8, stride: int = 4, seq_length: int = 4, embeddings_dim: int = 3, qkv_dim: int = 2):
     # Using parameters (batch_size=8, stride=1, seq_length=1)
     # for illustration purposes.
     # This results batches of 8 sample, each sample comprised of 4 tokens (seq_length)
-    seq_length = 4
 
     encoder, data_loader = get_encoder_and_batch_iterator(
         Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
-        batch_size=8,
-        stride=4,
+        batch_size=batch_size,
+        stride=stride,
         seq_length=seq_length,
     )
     data_iter = iter(data_loader)
@@ -183,7 +182,7 @@ def qkv(embeddings_dim: int = 3, qkv_dim: int = 2):
 
     # 3 dimension word-by-word embedding, dictated by `output_dim=3` and `context_length=seq_length`
     batch_embeddings = build_embeddings(
-        tokens=batch_tokens, vocab_size=encoder.max_token_value, embed_dim=embeddings_dim, seq_length=seq_length
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embedding_dim=embeddings_dim, seq_length=seq_length
     )
 
     print(Fore.CYAN + "Batch tokens shape:")
@@ -196,10 +195,7 @@ def qkv(embeddings_dim: int = 3, qkv_dim: int = 2):
     print(f"x_2 shape: {input_2.shape}")  # [seq_length, output_dim]
 
     print("\n" + Fore.CYAN + ">>> Calculate the full matrices for the batch:" + Fore.RESET)
-    # using output_dim=2 as default just for simplicity
-    queries, keys, values = build_qkv_matrices(
-        batch_embeddings, input_dim=batch_embeddings.shape[2], output_dim=qkv_dim
-    )
+    queries, keys, values = build_qkv_matrices(batch_embeddings, embedding_dim=embeddings_dim, qkv_dim=qkv_dim)
 
     print("\n" + Fore.CYAN + "QKV projections:" + Fore.RESET)
     print(Fore.GREEN + f"queries shape: {queries.shape}" + Fore.RESET)  # Shape [batch_size, seq_length, qkv_dim]
