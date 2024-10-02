@@ -170,3 +170,7 @@ cython_debug/
 
 # Other
 *.log
+
+
+# Data
+resources/data
