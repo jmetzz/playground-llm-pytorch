@@ -1,3 +1,9 @@
+## 0.3.0 (2024-10-02)
+
+### Refactor
+
+- **project**: restructue the project
+
 ## 0.2.0 (2024-10-02)
 
 ### Feat
