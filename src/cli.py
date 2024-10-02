@@ -10,7 +10,13 @@ import torch
 import typer
 from colorama import Fore, Style
 
-from nn import CausalAttention, SelfAttentionV1, SelfAttentionV2, build_embeddings, build_qkv_matrices
+from nn import (
+    CausalAttentionV1,
+    SelfAttentionV1,
+    SelfAttentionV2,
+    build_embeddings,
+    build_qkv_matrices,
+)
 from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
 from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
 from utils.data import get_encoder_and_batch_iterator, load_text_file
@@ -458,7 +464,7 @@ def attention_causal(
         tokens=batch_tokens, vocab_size=encoder.max_token_value, embeddings_dim=embeddings_dim, seq_length=seq_length
     )
 
-    causal_attention = CausalAttention(embedding_dim=embeddings_dim, output_dim=qkv_dim, dropout=0.0)
+    causal_attention = CausalAttentionV1(embedding_dim=embeddings_dim, output_dim=qkv_dim, dropout=0.0)
     context_vectors = causal_attention(batch_embeddings)
 
     print(f"{Fore.CYAN}batch_embeddings{Fore.RESET}: {batch_embeddings.shape}")  # [batch_size, seq_length, output_dim]
