@@ -1,4 +1,4 @@
-from splitters import punctuation_splitter, space_splitter
+from nano_gpt.splitters import punctuation_splitter, space_splitter
 
 
 def test_space_splitter_encode_space():

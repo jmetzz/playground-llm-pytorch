@@ -10,7 +10,9 @@ import torch
 import typer
 from colorama import Fore, Style
 
-from nn import (
+from common.data import get_encoder_and_batch_iterator, load_text_file
+from common.io import print_attention_matrix
+from nano_gpt.nn import (
     CausalAttentionV1,
     MultiHeadAttentionV1,
     SelfAttentionV1,
@@ -18,10 +20,8 @@ from nn import (
     build_embeddings,
     build_qkv_matrices,
 )
-from splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
-from tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
-from utils.data import get_encoder_and_batch_iterator, load_text_file
-from utils.io import print_attention_matrix
+from nano_gpt.splitters import punctuation_splitter, space_and_punctuation_splitter, space_splitter
+from nano_gpt.tokenizers import SimpleRegexTokenizerV1, SimpleRegexTokenizerV2
 
 colorama.init(autoreset=True)
 
