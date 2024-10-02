@@ -150,3 +150,28 @@ class CausalAttentionV1(torch.nn.Module):
             },
         )
         return context_vectors
+
+
+class MultiHeadAttentionV1(torch.nn.Module):
+    """Multiple heads of causal self-attention in parallel."""
+
+    def __init__(
+        self,
+        embeddings_dim: int,
+        head_dim: int,
+        num_heads: int,
+        dropout: float = 0.2,
+        *,
+        qkv_bias: bool = False,
+    ) -> None:
+        super().__init__()
+        heads = [
+            CausalAttentionV1(embedding_dim=embeddings_dim, output_dim=head_dim, dropout=dropout, qkv_bias=qkv_bias)
+            for _ in range(num_heads)
+        ]
+        self.heads = torch.nn.ModuleList(heads)
+
+    def forward(self, embeddings: torch.Tensor) -> torch.Tensor:
+        # concatenates over the channel dimension
+        res = [h(embeddings) for h in self.heads]
+        return torch.cat(res, dim=-1)

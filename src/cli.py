@@ -12,6 +12,7 @@ from colorama import Fore, Style
 
 from nn import (
     CausalAttentionV1,
+    MultiHeadAttentionV1,
     SelfAttentionV1,
     SelfAttentionV2,
     build_embeddings,
@@ -469,6 +470,43 @@ def attention_causal(
 
     print(f"{Fore.CYAN}batch_embeddings{Fore.RESET}: {batch_embeddings.shape}")  # [batch_size, seq_length, output_dim]
     print(f"{Fore.CYAN}batch_tokens{Fore.RESET}: {batch_tokens.shape}")  # [batch_size, seq_length]
+    print(f"{Fore.CYAN}context_vectors{Fore.RESET}: {context_vectors.shape}")
+
+
+@app.command()
+def attention_multihead(
+    batch_size: int = 8, stride: int = 4, seq_length: int = 4, embeddings_dim: int = 8, num_heads: int = 2
+):
+    encoder, data_loader = get_encoder_and_batch_iterator(
+        Path(__file__).parent.parent.joinpath("resources/the-verdict.txt"),
+        batch_size=batch_size,
+        stride=stride,
+        seq_length=seq_length,
+    )
+    data_iter = iter(data_loader)
+    batch_tokens, _ = next(data_iter)
+
+    batch_embeddings = build_embeddings(
+        tokens=batch_tokens, vocab_size=encoder.max_token_value, embeddings_dim=embeddings_dim, seq_length=seq_length
+    )
+
+    # how to define the number of heads and head size?
+    # - head_dim = embeddings_dim // num_heads
+    # since each head will result tensors with head_dim dimension,
+    # and then, when concatenated, the overall result will have the same dimension size
+    # as the input (embedding_dim). This simulates a group convolution behavior.
+    multihead = MultiHeadAttentionV1(
+        embeddings_dim=embeddings_dim, head_dim=embeddings_dim // num_heads, num_heads=num_heads
+    )
+    context_vectors = multihead(batch_embeddings)
+
+    # [batch_size, seq_length, embeddings_dim]
+    print(f"{Fore.CYAN}batch_embeddings{Fore.RESET}: {batch_embeddings.shape}")
+
+    # [batch_size, seq_length]
+    print(f"{Fore.CYAN}batch_tokens{Fore.RESET}: {batch_tokens.shape}")
+
+    # [batch_size, seq_length, embeddings_dim]
     print(f"{Fore.CYAN}context_vectors{Fore.RESET}: {context_vectors.shape}")
 
 
