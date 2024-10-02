@@ -1,6 +1,6 @@
 [project]
 name = "playground_llm_pytorch"
-version = "0.1.0"
+version = "0.2.0"
 description = "My playground in the world of LLMs with pytorch."
 authors = [{ name = "Jean Metz", email = "jmetzz.dev@gmail.com" }]
 readme = "README.md"
