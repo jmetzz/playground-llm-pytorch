@@ -27,7 +27,17 @@ dev-dependencies = [
   "pytest-sugar>=1.0.0",
   "pytest-xdist>=3.6.1",
   "ruff>=0.6.8",
+  "commitizen>=3.29.1",
 ]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "$version"
+version_scheme = "semver2"
+version_provider = "pep621"      # Get and set version from pyproject.toml project.version field
+update_changelog_on_bump = true
+major_version_zero = true
+
 
 [project.urls]
 Homepage = "https://github.com/jmetzz/playground_llm_pytorch"
