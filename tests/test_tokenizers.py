@@ -1,6 +1,6 @@
 import pytest
 
-from tokenizers import SimpleRegexTokenizerV1
+from nano_gpt.tokenizers import SimpleRegexTokenizerV1
 
 
 def test_simple_regex_tokenizer_encode():

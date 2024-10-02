@@ -121,7 +121,7 @@ ignore = []
   "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
   "SLF",     # flake8-self
 ]
-"cli.py" = ["T20", "FBT"]
+"*cli.py" = ["T20", "FBT"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
