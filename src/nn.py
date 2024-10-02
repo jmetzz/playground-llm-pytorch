@@ -98,7 +98,7 @@ class SelfAttentionV2(torch.nn.Module):
         return attention_weights @ values  # context vectors
 
 
-class CausalAttention(torch.nn.Module):
+class CausalAttentionV1(torch.nn.Module):
     def __init__(
         self, embedding_dim: int, output_dim: int, dropout: float, *, qkv_bias: bool = False, seed: int = 123
     ) -> None:
