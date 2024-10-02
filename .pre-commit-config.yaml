@@ -10,11 +10,10 @@ repos:
       - id: check-toml
       - id: check-yaml
         exclude: "not_rendered.yml|invalid-config.yaml"
-  - repo: https://github.com/python-poetry/poetry
-    rev: 1.8.3
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.4.17
     hooks:
-      - id: poetry-check
-      - id: poetry-lock
+      - id: uv-lock # Update the uv lockfile
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.1
     hooks:
@@ -30,7 +29,7 @@ repos:
         entry: |
           sh -c '
           if ls tests/*.py >/dev/null 2>&1; then
-            poetry run pytest -m "not nondeterministic";
+            uv run pytest -m "not nondeterministic";
           else
             echo "No test files found. Skipping pytest.";
           fi
@@ -42,7 +41,7 @@ repos:
         stages: [push]
       - id: licenses
         name: Generate licenses file
-        entry: poetry run pip-licenses --with-authors -f markdown --output-file ./licenses.md
+        entry: uv run pip-licenses --with-authors -f markdown --output-file ./licenses.md
         language: system
         # This hook doesn't need to pass any filenames.
         pass_filenames: false

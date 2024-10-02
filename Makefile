@@ -24,40 +24,36 @@ endif
 
 deps: initialize ## Install dependencies, including dev & test dependencies
 	@printf "$(CYAN)>>> Creating environment for project...$(COFF)\n"
-	poetry install --no-root --without notebook --sync
-	poetry run pre-commit install
-	poetry run pre-commit install --hook-type pre-push
-
-deps-notebook:
-	@printf "$(CYAN)>>> Adding extra notebook dependencies...$(COFF)\n"
-	poetry install --no-root --with notebook --sync
+	uv sync
+	uv run pre-commit install
+	uv run pre-commit install --hook-type pre-push
 
 test: ## Run unit tests
 	@printf "$(CYAN)Running test suite$(COFF)\n"
-	poetry run pytest -m "not nondeterministic" --cov=src
+	uv run pytest -m "not nondeterministic" --cov=src
 
 test-flaky: ## Run non-deterministic unit tests
 	@printf "$(CYAN)Running test suite$(COFF)\n"
-	poetry run pytest -m "nondeterministic"
+	uv run pytest -m "nondeterministic"
 
 check: ## Run static code checkers and linters
 	@printf "$(CYAN)Running static code analysis and license generation$(COFF)\n"
-	poetry run ruff check src tests
+	uv run ruff check src tests
 	@printf "All $(GREEN)done$(COFF)\n"
 
 lint: ## Runs ruff formatter
 	@printf "$(CYAN)Auto-formatting with ruff$(COFF)\n"
-	poetry run ruff format src tests notebooks
-	poetry run ruff check src tests --fix
+	uv run ruff format src tests notebooks
+	uv run ruff check src tests --fix
 
 precommit: ## Runs all pre-commit hooks
 	@printf "$(CYAN)Running pre-commit hooks$(COFF)\n"
-	poetry run pre-commit run --all-files
+	uv run pre-commit run --all-files
 	@printf "All $(GREEN)done$(COFF)\n"
 
 license: ## Generated the licenses.md file based on the project's dependencies
 	@printf " >>> Generating $(CYAN)licenses.md$(COFF) file\n"
-	poetry run pip-licenses --with-authors -f markdown --output-file ./licenses.md
+	uv run pip-licenses --with-authors -f markdown --output-file ./licenses.md
 
 clean: ## Removed the build, dist directories, pycache, pyo or pyc and swap files
 	@printf "$(CYAN)Cleaning EVERYTHING!$(COFF)\n"
