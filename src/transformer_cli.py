@@ -138,7 +138,7 @@ def attention_multihead(
 
 
 @app.command()
-def attention_multihead_cross(batch_size: int = 30, seq_length: int = 5, embeddings_dim: int = 32):
+def attention_multihead_cross(batch_size: int = 10, seq_length: int = 5, embeddings_dim: int = 32):
     token_embeddings = torch.randn((batch_size, seq_length, embeddings_dim))
 
     model = MultiHeadCrossAttention(model_dim=512, num_heads=8)
