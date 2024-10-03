@@ -135,37 +135,33 @@ class MultiHeadSelfAttention(nn.Module):
 class MultiHeadCrossAttention(nn.Module):
     def __init__(self, model_dim: int, num_heads: int):
         super().__init__()
-        self.model_dim = model_dim  # 512
-        self.num_heads = num_heads  # 8
-        self.heads_dim = model_dim // num_heads  # 64
-        self.kv_layer = nn.Linear(model_dim, 2 * model_dim)  # 512 x 1024
-        self.q_layer = nn.Linear(model_dim, model_dim)  # 512 x 512
-        self.linear_layer = nn.Linear(model_dim, model_dim)  # 512 x 512
+        self.model_dim = model_dim  # Typically the embedding dimension, e.g., 512
+        self.num_heads = num_heads  # e.g., 8 heads
+        self.head_dim = model_dim // num_heads  # e.g., 64 dimensions per head
+        self.kv_layer = nn.Linear(model_dim, 2 * model_dim)
+        self.q_layer = nn.Linear(model_dim, model_dim)
+        self.linear_layer = nn.Linear(model_dim, model_dim)
 
     def forward(self, embeddings: Tensor, mask: Tensor = None) -> Tensor:
-        batch_size, sequence_length, _ = embeddings.size()  # input: 30 x 200 x 512
-        keys_values = self.kv_layer(embeddings)  # 30 x 200 x 1024
-        queries = self.q_layer(embeddings)  # 30 x 200 x 512
-        keys_values = keys_values.reshape(
-            batch_size, sequence_length, self.num_heads, 2 * self.heads_dim
-        )  # 30 x 200 x 8 x 128
-        keys_values = keys_values.permute(0, 2, 1, 3)  # 30 x 8 x 200 x 128
-        queries = queries.reshape(batch_size, sequence_length, self.num_heads, self.heads_dim)  # 30 x 200 x 8 x 64
-        queries = queries.permute(0, 2, 1, 3)  # 30 x 8 x 200 x 64
+        batch_size, sequence_length, _ = embeddings.size()  # Input shape: [batch_size, seq_len, model_dim]
+        keys_values = self.kv_layer(embeddings)
+        queries = self.q_layer(embeddings)
+        keys_values = keys_values.reshape(batch_size, sequence_length, self.num_heads, 2 * self.heads_dim)
+        keys_values = keys_values.permute(0, 2, 1, 3)
+        queries = queries.reshape(batch_size, sequence_length, self.num_heads, self.heads_dim)
+        queries = queries.permute(0, 2, 1, 3)
 
-        # now break the tensor in 3 according to the last dimension. Each is 30 x 8 x 200 x 64
-        keys, values = keys_values.chunk(2, dim=-1)  # k: 30 x 8 x 200 x 64  | v :30 x 8 x 200 x 64
+        # now break the tensor in 3 according to the last dimension.
+        keys, values = keys_values.chunk(2, dim=-1)
+
         # We don't need the mask for cross attention. It should be None.
         context_vectors, attention = scaled_dot_product_attention(queries, keys, values, mask)
-        # attention: 30 x 8 x 200 x 200
-        # values: 30 x 8 x 200 x 64
 
         context_vectors = context_vectors.permute(0, 2, 1, 3).reshape(
             batch_size, sequence_length, self.num_heads * self.heads_dim
-        )  # 30 x 200 x 512
+        )
 
-        result = self.linear_layer(context_vectors)  # output: 30 x 200 x 512
-        # input and output shape matches :)
+        result = self.linear_layer(context_vectors)
 
         msg = {
             "embeddings.size()": embeddings.size(),
@@ -177,6 +173,6 @@ class MultiHeadCrossAttention(nn.Module):
             "context_vectors.size()": context_vectors.size(),
             "result.size()": result.size(),
         }
-        logging.debug("Parameters", extra=msg)
+        LOGGER.debug("MultiHeadCrossAttention Parameters", extra=msg)
 
         return result
