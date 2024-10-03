@@ -1,6 +1,6 @@
-from attention import MultiHeadCrossAttention, MultiHeadSelfAttention
 from torch import Tensor, nn
 
+from transformer.attention import MultiHeadCrossAttention, MultiHeadSelfAttention
 from transformer.normalization import NormalizationLayer
 
 
@@ -39,7 +39,9 @@ class FeedForwardBlock(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    """A single layer of the Transformer encoder, consisting of self-attention and a feed-forward network
+    """A single layer of the Transformer encoder.
+
+    Consisting of self-attention and a feed-forward network
     with normalization and dropout applied at each step.
 
     Args:
