@@ -169,6 +169,22 @@ def ff_block(
     print(ff_layer_block(token_embeddings))
 
 
+@app.command()
+def encoder_layer(
+    batch_size: int = 10,
+    seq_length: int = 5,
+    model_dim: int = 32,
+    num_heads: int = 4,
+    hidden_size: int = 8,
+    dropout: float = 0.2,
+):
+    token_embeddings, self_attention_mask = generate_dummy_inputs(
+        batch_size=batch_size, seq_length=seq_length, model_dim=model_dim, num_heads=num_heads
+    )
+    layer = EncoderLayer(model_dim=model_dim, hidden_size=hidden_size, num_heads=num_heads, dropout=dropout)
+    print(layer(token_embeddings, self_attention_mask))
+
+
 
 if __name__ == "__main__":
     app()
