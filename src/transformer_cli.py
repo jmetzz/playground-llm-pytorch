@@ -185,6 +185,23 @@ def encoder_layer(
     print(layer(token_embeddings, self_attention_mask))
 
 
+@app.command()
+def transformer_encoder(
+    batch_size: int = 30,  # noqa: ARG001
+    seq_length: int = 5,  # noqa: ARG001
+    model_dim: int = 32,  # noqa: ARG001
+    num_of_heads: int = 8,  # noqa: ARG001
+    num_hidden_layers: int = 5,  # noqa: ARG001
+    hidden_units_size: int = 2048,  # noqa: ARG001
+    dropout: float = 0.1,  # noqa: ARG001
+):
+    raise NotImplementedError()
+
+
+@app.command()
+def decoder_layer(model_dim: int = 32, hidden_size: int = 64, num_heads: int = 4, dropout: float = 0.2):  # noqa: ARG001
+    raise NotImplementedError()
+
 
 if __name__ == "__main__":
     app()
