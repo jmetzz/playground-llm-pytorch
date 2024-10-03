@@ -1,7 +1,41 @@
+import torch
 from torch import Tensor, nn
 
 from transformer.attention import MultiHeadCrossAttention, MultiHeadSelfAttention
-from transformer.normalization import NormalizationLayer
+
+
+class NormalizationLayer(nn.Module):
+    def __init__(self, model_dim: int, eps: int = 1e-5):
+        """
+        Normalizes the input embeddings across the feature dimension.
+
+        Args:
+            model_dim (int): The dimensionality of the feature (embedding) space,
+                            which is the number of features per token.
+            eps (float): A small value to prevent division by zero during normalization.
+        """
+        super().__init__()
+        self.eps = eps  # to avoid division by zero
+        self.gamma = nn.Parameter(torch.ones(model_dim))  # Learnable scale parameter
+        self.beta = nn.Parameter(torch.zeros(model_dim))  # Learnable shift parameter
+
+    def forward(self, embeddings: Tensor) -> Tensor:  # 30 x 200 x 512
+        """
+        Forward pass to normalize the input embeddings across the feature dimension.
+
+        Args:
+            embeddings (Tensor): Input tensor of shape [batch_size, seq_length, embedding_dim].
+
+        Returns:
+            Tensor: The normalized embeddings of the same shape.
+        """
+        mean = embeddings.mean(dim=-1, keepdim=True)  # Mean along model_dim
+        variance = ((embeddings - mean) ** 2).mean(dim=-1, keepdim=True)
+        std = (variance + self.eps).sqrt()  # use the eps for numerical stability
+        normalized_embeddings = (embeddings - mean) / std
+
+        # Apply learnable scale (gamma) and shift (beta)
+        return self.gamma * normalized_embeddings + self.beta
 
 
 class FeedForwardBlock(nn.Module):
