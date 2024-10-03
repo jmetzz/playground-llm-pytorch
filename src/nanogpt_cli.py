@@ -217,7 +217,7 @@ def qkv(batch_size: int = 8, seq_length: int = 4, stride: int = 4, embeddings_di
 
 
 @app.command()
-def attention_for_one_query(  # noqa: PLR0913, PLR0914
+def attention_for_one_query(
     batch_size: int = 8,
     seq_length: int = 4,
     stride: int = 4,
@@ -357,7 +357,7 @@ def attention_simple(
 
 
 @app.command()
-def attention_masked(  # noqa: PLR0913, PLR0914, PLR0917
+def attention_masked(
     batch_size: int = 8,
     stride: int = 4,
     seq_length: int = 4,
