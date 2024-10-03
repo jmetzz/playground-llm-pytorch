@@ -36,18 +36,17 @@ SENTENCES_SAMPLE = [
 
 def generate_dummy_inputs(
     batch_size: int = 10, seq_length: int = 5, model_dim: int = 32, num_heads: int = 4, qkv_dim: int | None = None
-) -> tuple[Tensor, Tensor, tuple[Tensor, Tensor, Tensor] | None]:
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, tuple[Tensor, Tensor, Tensor]]:
     # Generate random encoder inputs
     encoder_inputs = torch.rand(batch_size, seq_length, model_dim)
 
     # Generate self-attention mask
     self_attention_mask = torch.triu(torch.zeros(batch_size, num_heads, seq_length, seq_length), diagonal=1).bool()
 
-    qkv_matrices = None
     if qkv_dim:
-        qkv_matrices = build_dummy_qkv_matrices(encoder_inputs, qkv_dim=qkv_dim)
+        return encoder_inputs, self_attention_mask, build_dummy_qkv_matrices(encoder_inputs, qkv_dim=qkv_dim)
 
-    return encoder_inputs, self_attention_mask, qkv_matrices
+    return encoder_inputs, self_attention_mask
 
 
 def build_dummy_qkv_matrices(input_embeddings: Tensor, qkv_dim: int = 2) -> tuple[Tensor, Tensor, Tensor]:
@@ -129,7 +128,7 @@ def embed(model_dim: int = 32, seq_length: int = 5, dropout: float = 0.2):
 def attention_multihead(
     batch_size: int = 10, seq_length: int = 5, model_dim: int = 32, num_heads: int = 4, *, use_mask: bool = False
 ):
-    token_embeddings, self_attention_mask, _ = generate_dummy_inputs(batch_size, seq_length, model_dim)
+    token_embeddings, self_attention_mask = generate_dummy_inputs(batch_size, seq_length, model_dim)
 
     model = MultiHeadSelfAttention(model_dim=model_dim, num_heads=num_heads)
 
@@ -151,6 +150,24 @@ def norm_layer(batch_size: int = 10, seq_length: int = 5, embeddings_dim: int = 
     embedding = torch.randn(batch_size, seq_length, embeddings_dim)
     layer_norm = NormalizationLayer(embeddings_dim)
     print(layer_norm(embedding))
+
+
+@app.command()
+def ff_block(
+    batch_size: int = 10,
+    seq_length: int = 5,
+    num_heads: int = 4,
+    input_dim: int = 32,
+    hidden_size: int = 4,
+    dropout: float = 0.2,
+):
+    token_embeddings, _ = generate_dummy_inputs(
+        batch_size=batch_size, seq_length=seq_length, model_dim=input_dim, num_heads=num_heads
+    )
+    ff_layer_block = FeedForwardBlock(input_dim, hidden_size, dropout)
+
+    print(ff_layer_block(token_embeddings))
+
 
 
 if __name__ == "__main__":

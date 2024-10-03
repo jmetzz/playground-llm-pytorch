@@ -43,33 +43,32 @@ class FeedForwardBlock(nn.Module):
     a ReLU activation and dropout in between.
 
     Args:
-        model_dim (int): Dimensionality of the input and output embeddings.
-        hidden_dim (int): Dimensionality of the hidden layer in the feed-forward network.
+        input_dim (int): Dimensionality of the input and output embeddings.
+        output_dim (int): Dimensionality of the hidden layer in the feed-forward network.
         dropout (float): Dropout probability applied after the ReLU activation.
     """
 
-    def __init__(self, model_dim: int, hidden_dim: int, dropout: float):
+    def __init__(self, input_dim: int, output_dim: int, dropout: float):
         super().__init__()
-        self.linear1 = nn.Linear(model_dim, hidden_dim)  # First linear layer: [model_dim, num_hidden]
-        self.relu = nn.ReLU()
+        self.input_layer = nn.Linear(input_dim, output_dim)
+        self.relu = nn.ReLU()  # Introduce non-linearity.
         self.dropout = nn.Dropout(dropout)
-        self.linear2 = nn.Linear(hidden_dim, model_dim)  # Second linear layer: [num_hidden, model_dim]
+        self.output_layer = nn.Linear(output_dim, input_dim)  # projects back to the original model_dim
 
     def forward(self, inputs: Tensor) -> Tensor:
-        """Forward pass through the feed-forward network.
+        """Forward pass through the feed-forward network block.
 
         Args:
-            inputs (Tensor): Input tensor to the feed-forward network
-                    (shape: [batch_size, seq_length, model_dim]).
+            inputs (Tensor): Input tensor of shape [batch_size, seq_length, embeddings_dim]).
 
         Returns:
             Tensor: Output tensor after processing through the feed-forward network
-                    (shape: [batch_size, seq_length, model_dim]).
+                    (shape: [batch_size, seq_length, embeddings_dim]).
         """
-        embeddings = self.linear1(inputs)  # Linear transformation: [batch_size, seq_length, num_hidden]
-        embeddings = self.relu(embeddings)  # ReLU activation: [batch_size, seq_length, num_hidden]
-        embeddings = self.dropout(embeddings)  # Apply dropout: [batch_size, seq_length, num_hidden]
-        return self.linear2(embeddings)  # Final linear transformation: [batch_size, seq_length, model_dim]
+        embeddings = self.input_layer(inputs)
+        embeddings = self.relu(embeddings)
+        embeddings = self.dropout(embeddings)
+        return self.output_layer(embeddings)
 
 
 class EncoderLayer(nn.Module):
