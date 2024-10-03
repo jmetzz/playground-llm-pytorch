@@ -5,6 +5,7 @@ import logging
 import colorama
 import torch
 import typer
+from torch import Tensor
 
 from common.constants import END_TOKEN, PADDING_TOKEN, START_TOKEN
 from transformer import tokenizers
@@ -31,6 +32,35 @@ SENTENCES_SAMPLE = [
     f"{START_TOKEN} hello world world world world world {END_TOKEN}",
     f"{START_TOKEN} hello world {END_TOKEN} {PADDING_TOKEN} {PADDING_TOKEN} {PADDING_TOKEN} {PADDING_TOKEN}",
 ]
+
+
+def generate_dummy_inputs(
+    batch_size: int = 10, seq_length: int = 5, model_dim: int = 32, num_heads: int = 4, qkv_dim: int | None = None
+) -> tuple[Tensor, Tensor, tuple[Tensor, Tensor, Tensor] | None]:
+    # Generate random encoder inputs
+    encoder_inputs = torch.rand(batch_size, seq_length, model_dim)
+
+    # Generate self-attention mask
+    self_attention_mask = torch.triu(torch.zeros(batch_size, num_heads, seq_length, seq_length), diagonal=1).bool()
+
+    qkv_matrices = None
+    if qkv_dim:
+        qkv_matrices = build_dummy_qkv_matrices(encoder_inputs, qkv_dim=qkv_dim)
+
+    return encoder_inputs, self_attention_mask, qkv_matrices
+
+
+def build_dummy_qkv_matrices(input_embeddings: Tensor, qkv_dim: int = 2) -> tuple[Tensor, Tensor, Tensor]:
+    model_dim = input_embeddings.size(-1)
+    w_query = torch.nn.Parameter(torch.rand(model_dim, qkv_dim), requires_grad=False)
+    w_key = torch.nn.Parameter(torch.rand(model_dim, qkv_dim), requires_grad=False)
+    w_value = torch.nn.Parameter(torch.rand(model_dim, qkv_dim), requires_grad=False)
+
+    queries = input_embeddings @ w_query
+    keys = input_embeddings @ w_key
+    values = input_embeddings @ w_value
+
+    return queries, keys, values
 
 
 @app.command()
@@ -96,12 +126,15 @@ def embed(model_dim: int = 32, seq_length: int = 5, dropout: float = 0.2):
 
 
 @app.command()
-def attention_multihead(batch_size: int = 30, seq_length: int = 5, embeddings_dim: int = 32):
-    token_embeddings = torch.randn((batch_size, seq_length, embeddings_dim))
+def attention_multihead(
+    batch_size: int = 10, seq_length: int = 5, model_dim: int = 32, num_heads: int = 4, *, use_mask: bool = False
+):
+    token_embeddings, self_attention_mask, _ = generate_dummy_inputs(batch_size, seq_length, model_dim)
 
-    model = MultiHeadSelfAttention(model_dim=512, num_heads=8)
-    out = model.forward(token_embeddings)
-    print(out)
+    model = MultiHeadSelfAttention(model_dim=model_dim, num_heads=num_heads)
+
+    result = model.forward(token_embeddings, self_attention_mask) if use_mask else model.forward(token_embeddings)
+    print(result)
 
 
 @app.command()
