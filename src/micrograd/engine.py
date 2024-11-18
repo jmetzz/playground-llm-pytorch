@@ -45,7 +45,7 @@ class Operand:
         Returns:
             Operand: A new operand representing the sum of the scalar and the operand's value.
         """
-        return self + Operand(other)
+        return self + other
 
     def __neg__(self) -> Self:
         return self * -1
@@ -98,7 +98,7 @@ class Operand:
         Returns:
             Operand: A new operand representing the product of the scalar and the operand's value.
         """
-        return self * Operand(other)
+        return self * other
 
     def __truediv__(self, other) -> Self:
         """
@@ -115,8 +115,7 @@ class Operand:
         Returns:
             Operand: A new operand representing the division of the two operands.
         """
-        other = other if isinstance(other, Operand) else Operand(other)
-        return Operand(self.data * other.data**-1)
+        return self * other**-1
 
     def __rtruediv__(self, other) -> Self:
         """
@@ -128,7 +127,7 @@ class Operand:
         Returns:
             Operand: A new operand representing the result of dividing the scalar by the operand's value.
         """
-        return self / Operand(other)
+        return other * self**-1
 
     def __repr__(self) -> str:
         """
