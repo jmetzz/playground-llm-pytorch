@@ -317,6 +317,38 @@ class Operand:
         output = Operand(new_value, _src_operation="tanh", _src_operands=(self,), _backward=_chain_backward_step)
         return output  # noqa: RET504
 
+    def relu(self):
+        """
+        Computes the Rectified Linear Unit (ReLU) activation of the operand's value.
+
+        The ReLU function is defined as:
+            relu(x) = max(0, x)
+
+        This function also defines the derivative of the ReLU function:
+            d/dx relu(x) = 1 if x > 0 else 0
+
+        At x = 0, the derivative is typically set to 0 in implementations.
+
+        Returns:
+            Operand: A new Operand instance containing the ReLU activation of the original value.
+
+        Example:
+            >>> operand = Operand(data=-3)
+            >>> relu_output = operand.relu()
+            >>> print(relu_output.data)  # Outputs: 0
+        """
+
+        def _chain_backward_step():
+            self.grad += (output.data > 0) * output.grad
+
+        output = Operand(
+            max(self.data, 0),
+            _src_operation="ReLU",
+            _src_operands=(self,),
+            _backward=_chain_backward_step,
+        )
+        return output  # noqa: RET504
+
     def exp(self) -> Self:
         """
         Computes the exponential of the operand's value.
