@@ -1,5 +1,5 @@
 # Custom
-scratch*.py
+scratch*
 
 # OSX useful to ignore
 *.DS_Store
@@ -170,3 +170,8 @@ cython_debug/
 
 # Other
 *.log
+
+
+# Data
+resources/data
+resources/temp
