@@ -2,6 +2,8 @@ import math
 from collections.abc import Callable
 from typing import Self
 
+import numpy as np
+
 
 class Operand:
     """
@@ -313,7 +315,11 @@ class Operand:
             self.grad += (1 - new_value**2) * output.grad
 
         value = self.data
-        new_value = (math.exp(2 * value) - 1) / (math.exp(2 * value) + 1)
+
+        # new_value should be (math.exp(2 * value) - 1) / (math.exp(2 * value) + 1)
+        # but this implementation is not stable and causes division by zero every now and then.
+        # Thus, using numpy's implementation here to solve this issue
+        new_value = np.tanh(value)
         output = Operand(new_value, _src_operation="tanh", _src_operands=(self,), _backward=_chain_backward_step)
         return output  # noqa: RET504
 
