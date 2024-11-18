@@ -397,6 +397,21 @@ class Operand:
         output = Operand(math.exp(x), _src_operation="exp", _src_operands=(self,), _backward=_chain_backward_step)
         return output  # noqa: RET504
 
+    def sigmoid(self) -> Self:
+        def _chain_backward_step():
+            # Derivative of sigmoid: sigmoid(x) * (1 - sigmoid(x))
+            _local = output.data * (1 - output.data)
+            self.grad += _local * output.grad
+
+        x = self.data
+        output = Operand(
+            1 / (1 + (math.exp(-x))),
+            _src_operation="Sigmoid",
+            _src_operands=(self,),
+            _backward=_chain_backward_step,
+        )
+        return output  # noqa: RET504
+
     def trace(self) -> tuple[set[Self], set[tuple[Self]]]:
         """
         Builds a trace of the computation graph from the current operand, identifying

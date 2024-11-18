@@ -8,6 +8,7 @@ from micrograd.engine import Operand
 class ActivationChoice(StrEnum):
     RELU = "ReLU"
     TANH = "tanh"
+    SIGMOID = "sigmoid"
     LINEAR = "linear"
 
 
@@ -26,7 +27,7 @@ class Neuron(Module):
         self.bias = Operand(random.uniform(0, 1))  # noqa: S311
         self.activation = activation
 
-    def __call__(self, inputs: Sequence[Operand | int | float]) -> Sequence[Operand]:
+    def __call__(self, inputs: Sequence[Operand | int | float]) -> Operand:
         # calculate the (x*w + b) expression for this neuron
         value = sum((xi * wi for xi, wi in zip(inputs, self.weights, strict=False)), start=self.bias)
         # return the result of the activation function
@@ -35,6 +36,8 @@ class Neuron(Module):
                 return value.relu()
             case ActivationChoice.TANH:
                 return value.tanh()
+            case ActivationChoice.SIGMOID:
+                return value.sigmoid()
             case _:
                 return value
 
