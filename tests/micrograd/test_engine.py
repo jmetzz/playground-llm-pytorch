@@ -80,7 +80,6 @@ def test_operation_exp(scalar):
     ],
 )
 def test_operation_pow(scalar, power, expected):
-    assert (Operand(scalar) ** Operand(power)).data == expected
     assert (Operand(scalar) ** power).data == expected
 
 

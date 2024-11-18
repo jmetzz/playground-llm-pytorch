@@ -12,7 +12,7 @@ class Operand:
         grad (float): The gradient associated with the operand, initialized to 0.0.
     """
 
-    def __init__(self, value: int | float) -> None:
+    def __init__(self, value: int | float, _src_operation: str = "", _src_operands: set | None = None) -> None:
         """
         Initializes an Operand with a given numeric value.
 
@@ -21,6 +21,23 @@ class Operand:
         """
         self.data = value
         self.grad = 0.0
+        # metadata for visualization of the computation graph
+        self.src_operation = _src_operation
+        self._src_operands = set(_src_operands) if _src_operands else set()  # enforce set
+
+    def trace(self) -> tuple[set[Self], set[tuple[Self]]]:
+        nodes, edges = set(), set()
+
+        def _dfs_build(node):
+            """Topological order dependency graph"""
+            if node not in nodes:
+                nodes.add(node)
+                for ancestor in node._src_operands:  # noqa: SLF001
+                    edges.add((ancestor, node))
+                    _dfs_build(ancestor)
+
+        _dfs_build(self)
+        return nodes, edges
 
     def __add__(self, other) -> Self:
         """
@@ -33,7 +50,7 @@ class Operand:
             Operand: A new operand representing the sum of the two operands.
         """
         other = other if isinstance(other, Operand) else Operand(other)
-        return Operand(self.data + other.data)
+        return Operand(self.data + other.data, _src_operation="+", _src_operands=(self, other))
 
     def __radd__(self, other: int | float) -> Self:
         """
@@ -147,7 +164,7 @@ class Operand:
         """
         value = self.data
         new_value = (math.exp(2 * value) - 1) / (math.exp(2 * value) + 1)
-        return Operand(new_value)
+        return Operand(new_value, _src_operation="tanh", _src_operands=(self,))
 
     def exp(self) -> Self:
         """
@@ -163,27 +180,26 @@ class Operand:
         Returns:
             Operand: A new operand representing the exponential of the original operand's value.
         """
-        return Operand(math.exp(self.data))
+        return Operand(math.exp(self.data), _src_operation="exp", _src_operands=(self,))
 
-    def __pow__(self, exponent: int | float) -> Self:
+    def __pow__(self, other: int | float) -> Self:
         """
         Raises the operand's value to the power of a given exponent.
 
         Args:
-            exponent (int | float | Operand): The exponent to which the operand's value will be raised.
-                If an `Operand` instance is passed, its value is used as the exponent.
+            exponent (int | float): The exponent to which the operand's value will be raised.
 
         Raises:
-            ValueError: If the exponent is not of type int, float, or Operand.
+            ValueError: If the exponent is not of type int or float.
 
         Returns:
             Operand: A new operand representing the result of raising the original operand's value
             to the given exponent.
         """
-        if not isinstance(exponent, int | float | Operand):
+        if not isinstance(other, int | float):
             raise ValueError("pow only supports int or float powers")
-        exponent = exponent.data if isinstance(exponent, Operand) else exponent
-        return Operand(self.data**exponent)
+
+        return Operand(self.data**other, _src_operation=f"**{other}", _src_operands=(self,))
 
     def __repr__(self) -> str:
         """
