@@ -105,6 +105,42 @@ class Operand:
         new_value = (math.exp(2 * value) - 1) / (math.exp(2 * value) + 1)
         return Operand(new_value)
 
+    def exp(self) -> Self:
+        """
+        Computes the exponential of the operand's value.
+
+        The exponential function is defined as:
+
+        .. math::
+            e^x
+
+        where :math:`e` is the base of the natural logarithm and :math:`x` is the operand's value.
+
+        Returns:
+            Operand: A new operand representing the exponential of the original operand's value.
+        """
+        return Operand(math.exp(self.data))
+
+    def __pow__(self, exponent: int | float) -> Self:
+        """
+        Raises the operand's value to the power of a given exponent.
+
+        Args:
+            exponent (int | float | Operand): The exponent to which the operand's value will be raised.
+                If an `Operand` instance is passed, its value is used as the exponent.
+
+        Raises:
+            ValueError: If the exponent is not of type int, float, or Operand.
+
+        Returns:
+            Operand: A new operand representing the result of raising the original operand's value
+            to the given exponent.
+        """
+        if not isinstance(exponent, int | float | Operand):
+            raise ValueError("pow only supports int or float powers")
+        exponent = exponent.data if isinstance(exponent, Operand) else exponent
+        return Operand(self.data**exponent)
+
 
 if __name__ == "__main__":
     a = Operand(2.0)
@@ -115,3 +151,9 @@ if __name__ == "__main__":
     print(a * b)
     print(a / b)
     print((a + b).tanh())
+
+    print(a.exp())
+
+    print(a**2)
+    print(a**-1)
+    print(a**b)
