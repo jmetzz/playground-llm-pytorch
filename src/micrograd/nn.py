@@ -67,15 +67,15 @@ class Layer(Module):
 
 
 class MLP(Module):
-    def __init__(self, num_inputs: int, layers_num_outputs: list[int]) -> None:
+    def __init__(self, num_inputs: int, layers_num_outputs: list[int], activation: ActivationChoice = "ReLU") -> None:
         sizes = [num_inputs, *layers_num_outputs]
         self.layers = [
             Layer(
-                sizes[i],
-                sizes[i + 1],
-                activation=ActivationChoice.TANH if i != len(layers_num_outputs) - 1 else ActivationChoice.LINEAR,
+                sizes[layer_idx],
+                sizes[layer_idx + 1],
+                activation=activation if layer_idx != len(layers_num_outputs) - 1 else ActivationChoice.LINEAR,
             )
-            for i in range(len(layers_num_outputs))
+            for layer_idx in range(len(layers_num_outputs))
         ]
 
     def __call__(self, inputs: Sequence[Operand | int | float]) -> Sequence[Operand]:
