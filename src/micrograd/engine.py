@@ -47,6 +47,9 @@ class Operand:
         """
         return self + Operand(other)
 
+    def __neg__(self) -> Self:
+        return self * -1
+
     def __sub__(self, other) -> Self:
         """
         Subtracts another operand from this operand.
@@ -204,14 +207,21 @@ if __name__ == "__main__":
     print(a / b)
     print((a + b).tanh())
 
+    print("-" * 10)
     print(a.exp())
 
+    print("-" * 10)
     print(a**2)
     print(a**-1)
     print(a**b)
 
     # Reverse operations
+    print("-" * 10)
     print(a + 1, 1 + a)
     print(b - 1, 1 - b)
     print(a * 2, 2 * a)
     print(a / 10, 10 / a)
+
+    print("-" * 10)
+    print(-a)
+    print(-b)
