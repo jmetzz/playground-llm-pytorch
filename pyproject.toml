@@ -19,6 +19,7 @@ dependencies = [
   "ipykernel>=6.29.5",
   "torchsummary>=1.5.1",
   "environs>=11.2.0",
+  "scikit-learn>=1.5.2",
 ]
 
 [tool.uv]
@@ -34,6 +35,7 @@ dev-dependencies = [
   "ruff>=0.6.8",
   "commitizen>=3.30.0",
   "ipython>=8.10,<8.18",
+  "ipython-autotime>=0.3.2",
 ]
 
 [tool.commitizen]
