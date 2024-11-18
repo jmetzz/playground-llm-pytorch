@@ -91,6 +91,7 @@ def mlp(steps: int = 10, step_size: float = 0.01):
     for step in range(steps):
         # forward pass
         predictions = [net(x) for x in features]
+        # sum of square error
         loss = sum((pred - truth) ** 2 for truth, pred in zip(true_labels, predictions, strict=False))
 
         # backward pass
