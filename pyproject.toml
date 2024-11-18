@@ -122,6 +122,7 @@ ignore = []
   "SLF",     # flake8-self
 ]
 "*cli.py" = ["T20", "FBT"]
+"*engine.py" = ["T20"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
