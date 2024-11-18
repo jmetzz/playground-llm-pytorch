@@ -3,17 +3,27 @@ import logging
 import colorama
 import typer
 from colorama import Fore
+from environs import Env
 
 from micrograd.engine import Operand
 from micrograd.nn import MLP, Layer, Neuron
 from micrograd.visualization import build_computation_graph, plot_computation_graph
 
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)
+
+env = Env()
+env.read_env()  # read .env file, if it exists
+
+# Get log level from .env and convert to logging level
+log_level_name = env("LOG_LEVEL", default="INFO").upper()  # Default to INFO
+log_level = logging.getLevelName(log_level_name.upper())
+logging.basicConfig(level=logging.DEBUG)
+LOGGER = logging.getLogger(__name__)
+
 colorama.init(autoreset=True)
 
 app = typer.Typer()
-
-LOGGER = logging.getLogger()
-logging.basicConfig(level=logging.DEBUG)
 
 
 @app.command()
