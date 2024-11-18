@@ -32,7 +32,20 @@ class Operand:
         Returns:
             Operand: A new operand representing the sum of the two operands.
         """
+        other = other if isinstance(other, Operand) else Operand(other)
         return Operand(self.data + other.data)
+
+    def __radd__(self, other: int | float) -> Self:
+        """
+        Adds a scalar to the operand's value.
+
+        Args:
+            other (int | float): The scalar to add.
+
+        Returns:
+            Operand: A new operand representing the sum of the scalar and the operand's value.
+        """
+        return self + Operand(other)
 
     def __sub__(self, other) -> Self:
         """
@@ -44,7 +57,20 @@ class Operand:
         Returns:
             Operand: A new operand representing the difference of the two operands.
         """
+        other = other if isinstance(other, Operand) else Operand(other)
         return Operand(self.data - other.data)
+
+    def __rsub__(self, other) -> Self:
+        """
+        Subtracts the operand's value from a scalar.
+
+        Args:
+            other (int | float): The scalar to subtract from.
+
+        Returns:
+            Operand: A new operand representing the result of subtracting the operand's value from the scalar.
+        """
+        return self + Operand(other)
 
     def __mul__(self, other) -> Self:
         """
@@ -56,7 +82,20 @@ class Operand:
         Returns:
             Operand: A new operand representing the product of the two operands.
         """
+        other = other if isinstance(other, Operand) else Operand(other)
         return Operand(self.data * other.data)
+
+    def __rmul__(self, other) -> Self:
+        """
+        Multiplies a scalar with the operand's value.
+
+        Args:
+            other (int | float): The scalar to multiply with.
+
+        Returns:
+            Operand: A new operand representing the product of the scalar and the operand's value.
+        """
+        return self * Operand(other)
 
     def __truediv__(self, other) -> Self:
         """
@@ -73,7 +112,20 @@ class Operand:
         Returns:
             Operand: A new operand representing the division of the two operands.
         """
+        other = other if isinstance(other, Operand) else Operand(other)
         return Operand(self.data * other.data**-1)
+
+    def __rtruediv__(self, other) -> Self:
+        """
+        Divides a scalar by the operand's value.
+
+        Args:
+            other (int | float): The scalar to divide by the operand's value.
+
+        Returns:
+            Operand: A new operand representing the result of dividing the scalar by the operand's value.
+        """
+        return self / Operand(other)
 
     def __repr__(self) -> str:
         """
@@ -157,3 +209,9 @@ if __name__ == "__main__":
     print(a**2)
     print(a**-1)
     print(a**b)
+
+    # Reverse operations
+    print(a + 1, 1 + a)
+    print(b - 1, 1 - b)
+    print(a * 2, 2 * a)
+    print(a / 10, 10 / a)
