@@ -1,8 +1,9 @@
 import io
 
 import matplotlib.pyplot as plt
-from engine import Operand
 from graphviz import Digraph
+
+from micrograd.engine import Operand
 
 RANK_DIR_MAP = {"left-to-right": "LR", "top-to-bottom": "TB"}
 
@@ -43,13 +44,3 @@ def plot_computation_graph(graph: Digraph) -> None:
     plt.imshow(plt.imread(io.BytesIO(img_bytes)), aspect="equal")
     plt.axis("off")
     plt.show()  # Display the plot
-
-
-if __name__ == "__main__":
-    x = Operand(1.0)
-    y = (x * 2 + 1).tanh()
-    graph = build_computation_graph(y)
-
-    plot_computation_graph(graph)
-
-    export_graph(graph, "resources/temp/computation_graph")
