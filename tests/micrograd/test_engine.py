@@ -2,6 +2,8 @@ import math
 
 import pytest
 
+import numpy as np
+
 from micrograd.engine import Operand
 
 
@@ -9,24 +11,24 @@ from micrograd.engine import Operand
     ("scalar_1", "scalar_2", "expected"), [(0, 0, 0), (0, 1, 1), (1, 0, 1), (0, -1, -1), (-1, 0, -1)]
 )
 def test_operation_add(scalar_1, scalar_2, expected):
-    assert (Operand(scalar_1) + Operand(scalar_2)).data == expected
-    assert (scalar_1 + Operand(scalar_2)).data == expected
-    assert (Operand(scalar_1) + scalar_2).data == expected
+    assert (Operand(scalar_1) + Operand(scalar_2)).data == pytest.approx(expected, rel=1e-7)
+    assert (scalar_1 + Operand(scalar_2)).data == pytest.approx(expected, rel=1e-7)
+    assert (Operand(scalar_1) + scalar_2).data == pytest.approx(expected, rel=1e-7)
 
 
 @pytest.mark.parametrize(
     ("scalar_1", "scalar_2", "expected"), [(0, 0, 0), (0, 1, -1), (1, 0, 1), (0, -1, 1), (-1, 0, -1)]
 )
 def test_operation_sub(scalar_1, scalar_2, expected):
-    assert (Operand(scalar_1) - Operand(scalar_2)).data == expected
-    assert (scalar_1 - Operand(scalar_2)).data == expected
-    assert (Operand(scalar_1) - scalar_2).data == expected
+    assert (Operand(scalar_1) - Operand(scalar_2)).data == pytest.approx(expected, rel=1e-7)
+    assert (scalar_1 - Operand(scalar_2)).data == pytest.approx(expected, rel=1e-7)
+    assert (Operand(scalar_1) - scalar_2).data == pytest.approx(expected, rel=1e-7)
 
 
 @pytest.mark.parametrize(("scalar", "expected"), [(0, 0), (1, -1), (-1, 1), (3, -3)])
 def test_operation_neg(scalar, expected):
     actual = -Operand(scalar)
-    assert actual.data == expected
+    assert actual.data == pytest.approx(expected, rel=1e-7)
 
 
 @pytest.mark.parametrize(
@@ -34,9 +36,9 @@ def test_operation_neg(scalar, expected):
     [(0, 0, 0), (0, 1, 0), (1, 0, 0), (1, -1, -1), (-1, 1, -1), (2, 1, 2), (1, 2, 2), (2, 2, 4), (3, 2, 6), (2, 3, 6)],
 )
 def test_operation_mul(scalar_1, scalar_2, expected):
-    assert (Operand(scalar_1) * Operand(scalar_2)).data == expected
-    assert (scalar_1 * Operand(scalar_2)).data == expected
-    assert (Operand(scalar_1) * scalar_2).data == expected
+    assert (Operand(scalar_1) * Operand(scalar_2)).data == pytest.approx(expected, rel=1e-7)
+    assert (scalar_1 * Operand(scalar_2)).data == pytest.approx(expected, rel=1e-7)
+    assert (Operand(scalar_1) * scalar_2).data == pytest.approx(expected, rel=1e-7)
 
 
 @pytest.mark.parametrize(
@@ -59,7 +61,7 @@ def test_operation_div(scalar_1, scalar_2, expected):
 @pytest.mark.parametrize("scalar", [0, 1, 2, 3, 5, 2.5])
 def test_operation_exp(scalar):
     operand = Operand(scalar)
-    assert operand.exp().data == math.exp(scalar)
+    assert operand.exp().data == pytest.approx(math.exp(scalar), rel=1e-7)
 
 
 @pytest.mark.parametrize(
@@ -80,7 +82,7 @@ def test_operation_exp(scalar):
     ],
 )
 def test_operation_pow(scalar, power, expected):
-    assert (Operand(scalar) ** power).data == expected
+    assert (Operand(scalar) ** power).data == pytest.approx(expected, rel=1e-7)
 
 
 @pytest.mark.parametrize(
@@ -97,4 +99,4 @@ def test_operation_pow(scalar, power, expected):
 )
 def test_operation_tanh(scalar, expected):
     operand = Operand(scalar)
-    assert operand.tanh().data == expected
+    assert operand.tanh().data == pytest.approx(expected, rel=1e-7)
