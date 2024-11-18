@@ -60,8 +60,8 @@ class Operand:
         Returns:
             Operand: A new operand representing the difference of the two operands.
         """
-        other = other if isinstance(other, Operand) else Operand(other)
-        return Operand(self.data - other.data)
+
+        return self + (-other)
 
     def __rsub__(self, other) -> Self:
         """
@@ -73,7 +73,7 @@ class Operand:
         Returns:
             Operand: A new operand representing the result of subtracting the operand's value from the scalar.
         """
-        return self + Operand(other)
+        return other + (-self)
 
     def __mul__(self, other) -> Self:
         """
