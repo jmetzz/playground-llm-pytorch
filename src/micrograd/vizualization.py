@@ -15,7 +15,7 @@ def build_computation_graph(root: Operand, fmt: str = "svg", rankdir: str = "lef
     graph = Digraph(format=fmt, graph_attr={"rankdir": RANK_DIR_MAP[rankdir]})
 
     for node in nodes:
-        label = f"{{ data {node.data:.4f} | grad {node.grad:.4f} }}"
+        label = f"{{ {node.label} | data {node.data:.4f} | grad {node.grad:.4f} }}"
         graph.node(name=str(id(node)), label=label, shape="record")
         if node.src_operation:
             op_node_name = f"{id(node)}{node.src_operation}"
