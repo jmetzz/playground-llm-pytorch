@@ -60,7 +60,6 @@ class Operand:
         Returns:
             Operand: A new operand representing the difference of the two operands.
         """
-
         return self + (-other)
 
     def __rsub__(self, other) -> Self:
@@ -129,15 +128,6 @@ class Operand:
         """
         return other * self**-1
 
-    def __repr__(self) -> str:
-        """
-        Returns a string representation of the Operand object.
-
-        Returns:
-            str: The string representation of the operand's value.
-        """
-        return f"Operand(data={self.data})"
-
     def tanh(self) -> Self:
         """
         Computes the hyperbolic tangent of the input.
@@ -195,32 +185,11 @@ class Operand:
         exponent = exponent.data if isinstance(exponent, Operand) else exponent
         return Operand(self.data**exponent)
 
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the Operand object.
 
-if __name__ == "__main__":
-    a = Operand(2.0)
-    b = Operand(-3.0)
-
-    print(a + b)
-    print(a - b)
-    print(a * b)
-    print(a / b)
-    print((a + b).tanh())
-
-    print("-" * 10)
-    print(a.exp())
-
-    print("-" * 10)
-    print(a**2)
-    print(a**-1)
-    print(a**b)
-
-    # Reverse operations
-    print("-" * 10)
-    print(a + 1, 1 + a)
-    print(b - 1, 1 - b)
-    print(a * 2, 2 * a)
-    print(a / 10, 10 / a)
-
-    print("-" * 10)
-    print(-a)
-    print(-b)
+        Returns:
+            str: The string representation of the operand's value.
+        """
+        return f"Operand(data={self.data})"
