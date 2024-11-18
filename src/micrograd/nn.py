@@ -1,3 +1,4 @@
+import math
 import random
 from collections.abc import Sequence
 from enum import StrEnum
@@ -23,8 +24,10 @@ class Module:
 
 class Neuron(Module):
     def __init__(self, num_inputs: int, activation: ActivationChoice = "ReLU") -> None:
-        self.weights = [Operand(random.uniform(-1, 1)) for _ in range(num_inputs)]  # noqa: S311
-        self.bias = Operand(random.uniform(0, 1))  # noqa: S311
+        # Use the same PyTorch's uniform initialization for Linear layers
+        limit = 1 / math.sqrt(num_inputs)
+        self.weights = [Operand(random.uniform(-limit, limit)) for _ in range(num_inputs)]  # noqa: S311
+        self.bias = Operand(0.0)  # PyTorch initializes biases to zero
         self.activation = activation
 
     def __call__(self, inputs: Sequence[Operand | int | float]) -> Operand:
