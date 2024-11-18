@@ -1,3 +1,4 @@
+import math
 from typing import Self
 
 
@@ -83,6 +84,27 @@ class Operand:
         """
         return f"Operand(data={self.data})"
 
+    def tanh(self) -> Self:
+        """
+        Computes the hyperbolic tangent of the input.
+
+        The tanh function is defined as:
+
+        .. math::
+            \tanh(x) = \frac{e^{2x} - 1}{e^{2x} + 1}
+
+        where :math:`e` is the base of the natural logarithm.
+
+        Args:
+            x (float): The input value.
+
+        Returns:
+            float: The hyperbolic tangent of the input.
+        """
+        value = self.data
+        new_value = (math.exp(2 * value) - 1) / (math.exp(2 * value) + 1)
+        return Operand(new_value)
+
 
 if __name__ == "__main__":
     a = Operand(2.0)
@@ -92,3 +114,4 @@ if __name__ == "__main__":
     print(a - b)
     print(a * b)
     print(a / b)
+    print((a + b).tanh())
