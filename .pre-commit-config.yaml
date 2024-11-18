@@ -1,59 +1,56 @@
 repos:
-- hooks:
-  - id: check-added-large-files
-  - id: check-docstring-first
-  - id: check-shebang-scripts-are-executable
-  - id: debug-statements
-  - id: check-json
-  - id: check-toml
-  - exclude: not_rendered.yml|invalid-config.yaml
-    id: check-yaml
-  repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.5.0
-- hooks:
-  - id: uv-lock
-  repo: https://github.com/astral-sh/uv-pre-commit
-  rev: 0.4.17
-- hooks:
-  - args:
-    - --fix
-    id: ruff
-    types_or:
-    - python
-    - pyi
-  - id: ruff-format
-    types_or:
-    - python
-    - pyi
-    - jupyter
-  repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.6.1
-- hooks:
-  - always_run: true
-    entry: "sh -c '\nif ls tests/*.py >/dev/null 2>&1; then\n  uv run pytest -m \"\
-      not nondeterministic\";\nelse\n  echo \"No test files found. Skipping pytest.\"\
-      ;\nfi\n'\n"
-    id: pytest
-    language: system
-    name: Run pytest
-    pass_filenames: false
-    stages:
-    - push
-    types:
-    - python
-  - always_run: true
-    entry: uv run pip-licenses --with-authors -f markdown --output-file ./licenses.md
-    id: licenses
-    language: system
-    name: Generate licenses file
-    pass_filenames: false
-    stages:
-    - commit
-  repo: local
-- hooks:
-  - id: commitizen
-  - id: commitizen-branch
-    stages:
-    - push
-  repo: https://github.com/commitizen-tools/commitizen
-  rev: v3.29.1
+  - hooks:
+      - id: check-added-large-files
+      - id: check-docstring-first
+      - id: check-shebang-scripts-are-executable
+      - id: debug-statements
+      - id: check-json
+      - id: check-toml
+      - exclude: not_rendered.yml|invalid-config.yaml
+        id: check-yaml
+    repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+  - hooks:
+      - id: uv-lock
+    repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.4.17
+  - hooks:
+      - args:
+          - --fix
+        id: ruff
+        types_or:
+          - python
+          - pyi
+      - id: ruff-format
+        types_or:
+          - python
+          - pyi
+          - jupyter
+    repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.1
+  - hooks:
+      - always_run: true
+        entry:
+          "sh -c '\nif ls tests/*.py >/dev/null 2>&1; then\n  uv run pytest -m \"\
+          not nondeterministic\";\nelse\n  echo \"No test files found. Skipping pytest.\"\
+          ;\nfi\n'\n"
+        id: pytest
+        language: system
+        name: Run pytest
+        pass_filenames: false
+        types:
+          - python
+      - always_run: true
+        entry: uv run pip-licenses --with-authors -f markdown --output-file ./licenses.md
+        id: licenses
+        language: system
+        name: Generate licenses file
+        pass_filenames: false
+    repo: local
+  - hooks:
+      - id: commitizen
+      - id: commitizen-branch
+        stages:
+          - pre-push
+    repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.29.1
