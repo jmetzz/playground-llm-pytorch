@@ -2,8 +2,6 @@ import math
 
 import pytest
 
-import numpy as np
-
 from micrograd.engine import Operand
 
 
