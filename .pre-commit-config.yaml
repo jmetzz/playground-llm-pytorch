@@ -43,9 +43,11 @@ repos:
     - python
   repo: local
 - hooks:
-  - id: commitizen
   # - id: commitizen-branch
-    stages:
-    - pre-push
+  - id: commitizen
+    stages: [commit-msg]
+    language: python
+    language_version: python3
+    args: [--allow-abort, --commit-msg-file]
   repo: https://github.com/commitizen-tools/commitizen
   rev: v3.29.1
