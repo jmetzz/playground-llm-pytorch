@@ -38,22 +38,14 @@ repos:
     name: Run pytest
     pass_filenames: false
     stages:
-    - push
+    - pre-push
     types:
     - python
-  - always_run: true
-    entry: uv run pip-licenses --with-authors -f markdown --output-file ./licenses.md
-    id: licenses
-    language: system
-    name: Generate licenses file
-    pass_filenames: false
-    stages:
-    - commit
   repo: local
 - hooks:
   - id: commitizen
   - id: commitizen-branch
     stages:
-    - push
+    - pre-push
   repo: https://github.com/commitizen-tools/commitizen
   rev: v3.29.1
